@@ -69,9 +69,9 @@ def api_upload_video_simple(request):
             user=custom_user,
             file_path=f'videos/{filename}',
             upload_date=timezone.now(),
-            duration=0.0,  # обязательное поле
-            resolution='1920x1080',  # обязательное поле
-            analysis_status='uploaded'  # обязательное поле
+            duration=0.0, 
+            resolution='1920x1080',  
+            analysis_status='uploaded'
         )
         
      
@@ -113,4 +113,3 @@ def api_upload_video_simple(request):
             'traceback': traceback.format_exc()[:500]
         }, status=500)
 
-# Остальные функции остаются как есть
