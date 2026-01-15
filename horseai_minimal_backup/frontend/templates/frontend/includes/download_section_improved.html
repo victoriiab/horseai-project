@@ -1,0 +1,345 @@
+{% load static %}
+
+<div class="download-section" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 35px; margin-top: 40px; position: relative; overflow: hidden;">
+    
+    <!-- Декоративный фон -->
+    <div style="position: absolute; top: 0; right: 0; font-size: 120px; opacity: 0.05; z-index: 0;">📁</div>
+    
+    <!-- Заголовок -->
+    <h3 style="font-size: 1.8rem; font-weight: 700; color: var(--text-primary); margin-bottom: 30px; position: relative; z-index: 1; display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 32px;">📁</span>
+        Файлы результатов анализа
+    </h3>
+
+    <!-- Состояние загрузки -->
+    <div id="files-loading" style="text-align: center; padding: 40px 20px; position: relative; z-index: 1;">
+        <div class="spinner" style="border: 4px solid var(--border-light); border-top: 4px solid var(--accent); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+        <p style="color: var(--text-secondary); font-size: 1.1rem;">
+            Загрузка списка файлов...
+        </p>
+    </div>
+
+    <!-- Список файлов -->
+    <div id="files-list" style="display: none; position: relative; z-index: 1;">
+        <div class="files-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <!-- Файлы будут загружены через JavaScript -->
+        </div>
+
+        <!-- Информационная панель -->
+        <div style="background: linear-gradient(135deg, rgba(101, 163, 13, 0.1), rgba(217, 119, 6, 0.1)); border: 1px solid rgba(101, 163, 13, 0.3); border-radius: 12px; padding: 25px; margin-top: 30px;">
+            <div style="display: flex; align-items: flex-start; gap: 15px;">
+                <div style="font-size: 24px; color: var(--sage);">💡</div>
+                <div>
+                    <h4 style="color: var(--sage); font-weight: 600; margin-bottom: 10px; font-size: 1.1rem;">
+                        Примечания по файлам
+                    </h4>
+                    <ul style="color: var(--text-secondary); margin: 0; padding-left: 20px; font-size: 0.95rem;">
+                        <li><strong>Размеченное видео</strong> содержит ключевые точки тела лошади, обнаруженные моделью компьютерного зрения</li>
+                        <li><strong>Графики анализа</strong> показывают траектории движения конечностей и параметры походки</li>
+                        <li><strong>Данные анализа</strong> могут быть использованы для дополнительных исследований</li>
+                        <li>Файлы доступны для скачивания в течение 30 дней</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Сообщение об ошибке -->
+    <div id="files-error" style="display: none; background: rgba(248, 113, 113, 0.1); border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 12px; padding: 30px; margin-top: 20px; text-align: center; position: relative; z-index: 1;">
+        <div style="font-size: 48px; margin-bottom: 20px; color: #f87171;">📭</div>
+        <h4 style="color: #f87171; font-weight: 600; margin-bottom: 15px; font-size: 1.2rem;">
+            Файлы результатов временно недоступны
+        </h4>
+        <p style="color: var(--text-secondary); margin-bottom: 20px; line-height: 1.6; max-width: 600px; margin-left: auto; margin-right: auto;">
+            Файлы результатов могут быть еще в обработке или были удалены.<br>
+            Попробуйте обновить страницу через несколько минут.
+        </p>
+        <button onclick="location.reload()" style="background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border-light); padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
+            🔄 Обновить страницу
+        </button>
+    </div>
+</div>
+
+<style>
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .file-card {
+        background: var(--bg-hover);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        padding: 25px;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .file-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
+        background: var(--bg-card);
+    }
+
+    .file-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--accent), var(--earth));
+    }
+
+    .file-icon {
+        font-size: 42px;
+        margin-bottom: 20px;
+        display: block;
+        text-align: center;
+    }
+
+    .file-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+        flex-grow: 1;
+    }
+
+    .file-info {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 20px;
+        line-height: 1.5;
+    }
+
+    .file-size {
+        background: var(--bg-card);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: var(--text-tertiary);
+        display: inline-block;
+        margin-top: 8px;
+        border: 1px solid var(--border-light);
+    }
+
+    .btn-download {
+        display: inline-block;
+        padding: 14px 24px;
+        background: linear-gradient(135deg, var(--accent), var(--earth));
+        color: white;
+        text-decoration: none;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 1rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .btn-download:hover {
+        background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg), var(--glow);
+    }
+
+    .btn-download:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    @media (max-width: 768px) {
+        .files-grid {
+            grid-template-columns: 1fr !important;
+        }
+        
+        .download-section {
+            padding: 25px 20px;
+        }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const analysisId = {{ analysis.analysis_id|default:0 }};
+    
+    if (!analysisId) {
+        document.getElementById('files-error').style.display = 'block';
+        document.getElementById('files-loading').style.display = 'none';
+        return;
+    }
+    
+    // Загружаем список файлов
+    fetch(`/api/analysis/${analysisId}/files/`)
+        .then(response => {
+            if (!response.ok) throw new Error('Network error');
+            return response.json();
+        })
+        .then(data => {
+            const filesList = document.getElementById('files-list');
+            const filesGrid = filesList.querySelector('.files-grid');
+            const loading = document.getElementById('files-loading');
+            const error = document.getElementById('files-error');
+            
+            loading.style.display = 'none';
+            error.style.display = 'none';
+            
+            if (data.files && data.files.length > 0) {
+                // Отображаем только существующие файлы
+                const existingFiles = data.files.filter(f => f.exists);
+                
+                if (existingFiles.length === 0) {
+                    filesList.style.display = 'none';
+                    error.style.display = 'block';
+                    return;
+                }
+                
+                // Генерируем карточки файлов
+                filesGrid.innerHTML = '';
+                
+                existingFiles.forEach(file => {
+                    const icon = getFileIcon(file.type);
+                    const description = getFileDescription(file.type);
+                    
+                    const card = document.createElement('div');
+                    card.className = 'file-card';
+                    
+                    card.innerHTML = `
+                        <div class="file-icon">${icon}</div>
+                        <div class="file-title">${description}</div>
+                        <div class="file-info">
+                            <div style="font-family: monospace; font-size: 0.85rem; color: var(--text-tertiary); margin-bottom: 8px;">
+                                ${file.filename}
+                            </div>
+                            <span class="file-size">${file.size_human}</span>
+                        </div>
+                        <a href="${file.url}" class="btn-download" download onclick="trackDownload('${file.type}')">
+                            <span>📥</span>
+                            Скачать файл
+                        </a>
+                    `;
+                    
+                    filesGrid.appendChild(card);
+                });
+                
+                filesList.style.display = 'block';
+                
+                // Анимация появления карточек
+                const cards = filesGrid.querySelectorAll('.file-card');
+                cards.forEach((card, index) => {
+                    card.style.animation = `fadeIn 0.5s ease-out ${index * 0.1}s both`;
+                });
+                
+            } else {
+                filesList.style.display = 'none';
+                error.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading files:', error);
+            document.getElementById('files-loading').style.display = 'none';
+            document.getElementById('files-error').style.display = 'block';
+        });
+    
+    function getFileIcon(fileType) {
+        const icons = {
+            'annotated_video': '📹',
+            'original_video': '🎬',
+            'result_plot': '📊',
+            'result_data': '💾',
+            'result_json': '📄',
+            'result_report': '📋'
+        };
+        return icons[fileType] || '📁';
+    }
+    
+    function getFileDescription(fileType) {
+        const descriptions = {
+            'annotated_video': 'Размеченное видео',
+            'original_video': 'Оригинальное видео',
+            'result_plot': 'График анализа походки',
+            'result_data': 'Данные анализа (H5)',
+            'result_json': 'JSON данные',
+            'result_report': 'Текстовый отчет'
+        };
+        return descriptions[fileType] || 'Файл результатов';
+    }
+    
+    window.trackDownload = function(fileType) {
+        // Можно добавить отслеживание скачиваний
+        console.log(`Download started: ${fileType}`);
+        
+        // Показать уведомление
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--sage);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            z-index: 10000;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease-out;
+        `;
+        notification.innerHTML = `📥 Началась загрузка файла`;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    };
+    
+    // Добавляем CSS для анимаций
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>

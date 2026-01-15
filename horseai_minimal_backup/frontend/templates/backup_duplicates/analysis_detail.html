@@ -1,0 +1,54 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Детали анализа - HorseAI{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 40px auto; padding: 20px; text-align: center;">
+    <h1 style="font-size: 32px; color: var(--text-primary); margin-bottom: 20px;">
+        Детали анализа #{{ analysis_id }}
+    </h1>
+    <p style="color: var(--text-secondary); margin-bottom: 40px;">
+        Страница деталей анализа будет загружена через JavaScript
+    </p>
+    <div id="analysisDetails" style="min-height: 400px;">
+        <!-- Детали загрузятся через JavaScript -->
+    </div>
+</div>
+
+<script>
+async function loadAnalysisDetails() {
+    const analysisId = {{ analysis_id }};
+    
+    try {
+        // Здесь будет загрузка данных анализа
+        const response = await fetch(`/api/ml/video/0/analysis/`); // TODO: правильный endpoint
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('analysisDetails').innerHTML = `
+                <div style="background: var(--bg-card); padding: 30px; border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                    <h2 style="color: var(--text-primary); margin-bottom: 20px;">Результат анализа</h2>
+                    <pre style="text-align: left; background: var(--bg-dark); padding: 20px; border-radius: var(--radius); overflow-x: auto;">
+${JSON.stringify(data, null, 2)}
+                    </pre>
+                </div>
+            `;
+        } else {
+            document.getElementById('analysisDetails').innerHTML = `
+                <div style="color: var(--accent); padding: 20px; background: var(--bg-card); border-radius: var(--radius);">
+                    Ошибка загрузки данных анализа
+                </div>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('analysisDetails').innerHTML = `
+            <div style="color: var(--accent); padding: 20px; background: var(--bg-card); border-radius: var(--radius);">
+                Ошибка сети: ${error.message}
+            </div>
+        `;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadAnalysisDetails);
+</script>
+{% endblock %}

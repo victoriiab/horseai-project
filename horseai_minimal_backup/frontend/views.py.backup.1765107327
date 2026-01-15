@@ -1,0 +1,506 @@
+"""
+РАБОЧИЕ VIEWS - исправленная версия
+"""
+import os
+import json
+from datetime import datetime
+from django.shortcuts import render, redirect
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+from django.utils import timezone
+from web.database.models import Animal, Video, Analysis, User
+
+# ========== ОСНОВНЫЕ СТРАНИЦЫ ==========
+def index(request):
+    """Главная страница"""
+    if not request.user.is_authenticated:
+        return render(request, 'frontend/index.html')
+    
+    # Получаем кастомного пользователя
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        is_admin = request.user.is_staff or custom_user.role_id in ['admin', 'superadmin']
+    except User.DoesNotExist:
+        is_admin = request.user.is_staff
+    
+    # Статистика
+    context = {}
+    
+    if is_admin:
+        context.update({
+            'animals_count': Animal.objects.count(),
+            'videos_count': Video.objects.count(),
+            'analyses_count': Analysis.objects.count(),
+            'user_role': 'admin'
+        })
+    else:
+        try:
+            custom_user = User.objects.get(login=request.user.username)
+            context.update({
+                'animals_count': Animal.objects.filter(user=custom_user).count(),
+                'videos_count': Video.objects.filter(user=custom_user).count(),
+                'analyses_count': Analysis.objects.filter(video__user=custom_user).count(),
+                'user_role': 'user'
+            })
+        except:
+            context.update({
+                'animals_count': 0,
+                'videos_count': 0,
+                'analyses_count': 0,
+                'user_role': 'user'
+            })
+    
+    return render(request, 'frontend/index.html', context)
+
+def custom_login(request):
+    """Вход в систему"""
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            login(request, user)
+            messages.success(request, f'Добро пожаловать, {username}!')
+            return redirect('index')
+        else:
+            messages.error(request, 'Неверное имя пользователя или пароль')
+    
+    return render(request, 'frontend/login.html')
+
+def custom_logout(request):
+    """Выход из системы"""
+    logout(request)
+    messages.success(request, 'Вы успешно вышли из системы')
+    return redirect('index')
+
+
+def animals_list(request):
+    """Список животных"""
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        animals = Animal.objects.filter(user=custom_user).order_by('-created_at')
+    except:
+        animals = []
+    
+    return render(request, 'frontend/animals.html', {'animals': animals})
+
+
+def video_upload(request):
+    """Загрузка видео"""
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        animals = Animal.objects.filter(user=custom_user)
+    except:
+        animals = []
+    
+    return render(request, 'frontend/video_upload.html', {'animals': animals})
+
+
+def analysis_results(request):
+    """Результаты анализов"""
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        
+        if request.user.is_staff or custom_user.role_id in ['admin', 'superadmin']:
+            analyses = Analysis.objects.all().select_related('video', 'video__animal').order_by('-analysis_date')
+            animals = Animal.objects.all()[:20]
+        else:
+            user_animals = Animal.objects.filter(user=custom_user)
+            user_videos = Video.objects.filter(animal__in=user_animals)
+            analyses = Analysis.objects.filter(video__in=user_videos).select_related('video', 'video__animal').order_by('-analysis_date')
+            animals = user_animals
+    except:
+        analyses = []
+        animals = []
+    
+    context = {
+        'analyses': analyses,
+        'animals': animals,
+        'total_count': len(analyses),
+        'lame_count': len([a for a in analyses if a.is_lame]),
+        'healthy_count': len([a for a in analyses if not a.is_lame])
+    }
+    
+    return render(request, 'frontend/analysis.html', context)
+
+
+def ration_calculation(request):
+    """Расчет рациона"""
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        animals = Animal.objects.filter(user=custom_user)
+    except:
+        animals = []
+    
+    return render(request, 'frontend/ration.html', {'animals': animals})
+
+
+def admin_dashboard(request):
+    """Админ панель"""
+    if not (request.user.is_staff or hasattr(request.user, 'custom_user') and request.user.custom_user.role_id in ['admin', 'superadmin']):
+        messages.error(request, 'Доступ запрещен')
+        return redirect('index')
+    
+    stats = {
+        'total_users': User.objects.count(),
+        'total_animals': Animal.objects.count(),
+        'total_videos': Video.objects.count(),
+        'total_analyses': Analysis.objects.count(),
+        'lame_count': Analysis.objects.filter(is_lame=True).count(),
+    }
+    
+    return render(request, 'frontend/admin_dashboard.html', {'stats': stats})
+
+
+def profile(request):
+    """Профиль пользователя"""
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        
+        context = {
+            'animals_count': Animal.objects.filter(user=custom_user).count(),
+            'videos_count': Video.objects.filter(user=custom_user).count(),
+            'analyses_count': Analysis.objects.filter(video__user=custom_user).count(),
+        }
+        
+        if custom_user.role_id in ['admin', 'superadmin']:
+            context['user_role'] = 'admin'
+        elif custom_user.role_id == 'veterinarian':
+            context['user_role'] = 'veterinarian'
+        else:
+            context['user_role'] = 'user'
+            
+    except:
+        context = {
+            'animals_count': 0,
+            'videos_count': 0,
+            'analyses_count': 0,
+            'user_role': 'user'
+        }
+    
+    return render(request, 'frontend/profile.html', context)
+
+# ========== API ENDPOINTS ==========
+@csrf_exempt
+
+def get_system_stats(request):
+    """Статистика системы - теперь работает для всех пользователей"""
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        is_admin = request.user.is_staff or custom_user.role_id in ['admin', 'superadmin']
+        
+        if is_admin:
+            # Для админов - полная статистика
+            stats = {
+                'status': 'success',
+                'users_count': User.objects.count(),
+                'animals_count': Animal.objects.count(),
+                'videos_count': Video.objects.count(),
+                'analyses_count': Analysis.objects.count(),
+                'lame_count': Analysis.objects.filter(is_lame=True).count(),
+                'is_admin': True
+            }
+        else:
+            # Для обычных пользователей - только их статистика
+            stats = {
+                'status': 'success',
+                'animals_count': Animal.objects.filter(user=custom_user).count(),
+                'videos_count': Video.objects.filter(user=custom_user).count(),
+                'analyses_count': Analysis.objects.filter(video__user=custom_user).count(),
+                'is_admin': False
+            }
+        
+        return JsonResponse(stats)
+        
+    except User.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'error': 'Пользователь не найден',
+            'is_admin': False
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'error': str(e),
+            'is_admin': False
+        }, status=500)
+
+@csrf_exempt
+
+@csrf_exempt
+def upload_video_api_real(request):
+    """API для загрузки видео - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    if request.method != 'POST':
+        from django.http import JsonResponse
+        return JsonResponse({'success': False, 'error': 'Только POST метод'})
+    
+    try:
+        print("=== ЗАГРУЗКА ВИДЕО НАЧАТА ===")
+        
+        video_file = request.FILES.get('video_file')
+        animal_id = request.POST.get('animal_id')
+        
+        if not video_file:
+            from django.http import JsonResponse
+            return JsonResponse({'success': False, 'error': 'Файл не выбран'})
+        
+        if not animal_id:
+            from django.http import JsonResponse
+            return JsonResponse({'success': False, 'error': 'Выберите животное'})
+        
+        # Получаем пользователя
+        from web.database.models import User, Animal, Video
+        custom_user = User.objects.get(login=request.user.username)
+        
+        # Получаем животное
+        animal = Animal.objects.get(animal_id=animal_id, user=custom_user)
+        
+        # Сохраняем видео
+        import os
+        from datetime import datetime
+        import uuid
+        
+        media_dir = '/home/ais/shared/horseAI/media/videos'
+        os.makedirs(media_dir, exist_ok=True)
+        
+        # Безопасное имя файла
+        safe_name = str(uuid.uuid4())[:8] + '_' + video_file.name.replace(' ', '_')
+        filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{safe_name}"
+        filepath = os.path.join(media_dir, filename)
+        
+        # Сохраняем файл
+        with open(filepath, 'wb+') as destination:
+            for chunk in video_file.chunks():
+                destination.write(chunk)
+        
+        print(f"Файл сохранен: {filepath}")
+        
+        # Создаем запись в БД
+        video = Video.objects.create(
+            animal=animal,
+            user=custom_user,
+            file_path=f'videos/{filename}',
+            upload_date=datetime.now(),
+            duration=0,
+            resolution='unknown',
+            analysis_status='uploaded'
+        )
+        
+        from django.http import JsonResponse
+        return JsonResponse({
+            'success': True,
+            'message': 'Видео успешно загружено!',
+            'video_id': video.video_id,
+            'file_path': video.file_path
+        })
+        
+    except Exception as e:
+        print(f"ОШИБКА: {str(e)}")
+        from django.http import JsonResponse
+        return JsonResponse({'success': False, 'error': str(e)})
+
+def upload_video_api_real(request):
+    """API для загрузки видео"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Метод не поддерживается'})
+    
+    try:
+        video_file = request.FILES.get('video_file')
+        animal_id = request.POST.get('animal_id')
+        
+        if not video_file:
+            return JsonResponse({'success': False, 'error': 'Файл не выбран'})
+        
+        if not animal_id:
+            return JsonResponse({'success': False, 'error': 'Выберите животное'})
+        
+        # Получаем пользователя и животное
+        custom_user = User.objects.get(login=request.user.username)
+        animal = Animal.objects.get(animal_id=animal_id, user=custom_user)
+        
+        # Сохраняем видео
+        import os
+        from datetime import datetime
+        media_dir = '/home/ais/shared/horseAI/media/videos'
+        os.makedirs(media_dir, exist_ok=True)
+        
+        # Безопасное имя файла
+        import uuid
+        safe_name = str(uuid.uuid4())[:8] + '_' + video_file.name.replace(' ', '_')
+        filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{safe_name}"
+        filepath = os.path.join(media_dir, filename)
+        
+        # Сохраняем файл
+        with open(filepath, 'wb+') as destination:
+            for chunk in video_file.chunks():
+                destination.write(chunk)
+        
+        # Создаем запись в БД
+        from datetime import datetime
+        video = Video.objects.create(
+            animal=animal,
+            user=custom_user,
+            file_path=f'videos/{filename}',
+            upload_date=datetime.now(),
+            duration=0,
+            resolution='unknown',
+            analysis_status='uploaded'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Видео успешно загружено!',
+            'video_id': video.video_id,
+            'file_path': video.file_path
+        })
+        
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Пользователь не найден'})
+    except Animal.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Животное не найдено'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+def register(request):
+    """Регистрация нового пользователя"""
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        email = request.POST.get('email')
+        full_name = request.POST.get('full_name')
+        
+        if not all([username, password, email]):
+            messages.error(request, 'Заполните все обязательные поля')
+            return render(request, 'frontend/register.html')
+        
+        # Проверяем, нет ли уже такого пользователя
+        if User.objects.filter(login=username).exists():
+            messages.error(request, 'Пользователь с таким логином уже существует')
+            return render(request, 'frontend/register.html')
+        
+        if User.objects.filter(email=email).exists():
+            messages.error(request, 'Пользователь с таким email уже существует')
+            return render(request, 'frontend/register.html')
+        
+        # Создаем пользователя
+        try:
+            from django.contrib.auth.models import User as AuthUser
+            
+            # Создаем пользователя Django
+            auth_user = AuthUser.objects.create_user(
+                username=username,
+                password=password,
+                email=email,
+                is_staff=False,
+                is_superuser=False
+            )
+            
+            # Создаем кастомного пользователя
+            custom_user = User.objects.create(
+                login=username,
+                password_hash=password,  # В реальности нужно хешировать
+                email=email,
+                full_name=full_name or username,
+                role_id='user',
+                created_at=datetime.now(),
+                is_active=True,
+                is_staff=False,
+                is_superuser=False
+            )
+            
+            messages.success(request, 'Регистрация успешна! Теперь вы можете войти.')
+            return redirect('login')
+            
+        except Exception as e:
+            messages.error(request, f'Ошибка регистрации: {e}')
+    
+    return render(request, 'frontend/register.html')
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import os
+from datetime import datetime
+from web.database.models import Animal, Video, User
+from frontend.forms import VideoUploadForm
+
+
+def video_upload(request):
+    """Загрузка видео"""
+    try:
+        # Получаем кастомного пользователя
+        custom_user = User.objects.get(login=request.user.username)
+        animals = Animal.objects.filter(user=custom_user)
+        
+        form = VideoUploadForm(user=request.user)
+        
+        context = {
+            'animals': animals,
+            'form': form,
+            'page_title': 'Загрузка видео для анализа'
+        }
+        return render(request, 'frontend/video_upload.html', context)
+        
+    except Exception as e:
+        messages.error(request, f'Ошибка: {e}')
+        return render(request, 'frontend/video_upload.html', {'animals': [], 'page_title': 'Загрузка видео'})
+
+@csrf_exempt
+
+def upload_video_api(request):
+    """API для загрузки видео"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Метод не поддерживается'})
+    
+    try:
+        video_file = request.FILES.get('video_file')
+        animal_id = request.POST.get('animal_id')
+        
+        if not video_file:
+            return JsonResponse({'success': False, 'error': 'Файл не выбран'})
+        
+        if not animal_id:
+            return JsonResponse({'success': False, 'error': 'Выберите животное'})
+        
+        # Получаем пользователя и животное
+        custom_user = User.objects.get(login=request.user.username)
+        animal = Animal.objects.get(animal_id=animal_id, user=custom_user)
+        
+        # Сохраняем видео
+        media_dir = '/home/ais/shared/horseAI/media/videos'
+        os.makedirs(media_dir, exist_ok=True)
+        
+        filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{video_file.name}"
+        filepath = os.path.join(media_dir, filename)
+        
+        with open(filepath, 'wb+') as destination:
+            for chunk in video_file.chunks():
+                destination.write(chunk)
+        
+        # Создаем запись в БД
+        video = Video.objects.create(
+            animal=animal,
+            user=custom_user,
+            file_path=f'videos/{filename}',
+            upload_date=datetime.now(),
+            duration=0,
+            resolution='unknown',
+            analysis_status='uploaded'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Видео успешно загружено',
+            'video_id': video.video_id,
+            'file_path': video.file_path
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

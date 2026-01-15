@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HorseAI — автоматизированный анализ видеозаписей лошадей для выявления хромоты и расчёта рациона кормления.">
+    <title>{% block title %}HorseAI - Анализ состояния лошадей{% endblock %}</title>
+
+    <!-- Упрощенные стили -->
+    <style>
+        :root {
+            --bg-dark: #121826;
+            --bg-card: #1e2436;
+            --border: #2a3246;
+            --text-primary: #e4e8f0;
+            --text-secondary: #a0abc0;
+            --text-tertiary: #6b7280;
+            --accent: #d97706;
+            --accent-hover: #f59e0b;
+            --accent-light: #fbbf24;
+            --success: #10b981;
+            --error: #ef4444;
+            --radius: 8px;
+            --transition: all 0.2s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.5;
+            color: var(--text-primary);
+            background: var(--bg-dark);
+            min-height: 100vh;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Минималистичная навигация */
+        .navbar {
+            background: rgba(18, 24, 38, 0.95);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            height: 60px;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent-light);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            font-size: 18px;
+        }
+
+        /* Компактная навигация */
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            list-style: none;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 13px;
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-link.active {
+            color: var(--accent-light);
+            background: rgba(217, 119, 6, 0.1);
+        }
+
+        .nav-link-icon {
+            font-size: 15px;
+            opacity: 0.8;
+        }
+
+        /* Простая панель пользователя */
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d97706, #92400e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            color: white;
+            font-weight: 500;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Минималистичная кнопка Выйти */
+        .logout-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+            color: #fca5a5;
+        }
+
+        .logout-icon {
+            font-size: 14px;
+        }
+
+        /* Гость */
+        .guest-label {
+            color: var(--text-tertiary);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Основной контент */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            min-height: calc(100vh - 60px);
+        }
+
+        /* Простые уведомления */
+        .messages-container {
+            max-width: 1200px;
+            margin: 0 auto 20px;
+            padding: 0 20px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            border: 1px solid;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .alert-success {
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #34d399;
+        }
+
+        .alert-error {
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        .alert-info {
+            border-color: rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+        }
+
+        .alert-warning {
+            border-color: rgba(245, 158, 11, 0.3);
+            color: #fcd34d;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .nav-container {
+                padding: 0 16px;
+            }
+            
+            .nav-link-text {
+                display: none;
+            }
+            
+            .nav-link {
+                padding: 10px;
+            }
+            
+            .user-name {
+                display: none;
+            }
+            
+            .logout-btn span:last-child {
+                display: none;
+            }
+            
+            .main-container {
+                padding: 20px 16px;
+            }
+            
+            .messages-container {
+                padding: 0 16px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .logo span:last-child {
+                display: none;
+            }
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <span class="logo-icon">🐎</span>
+                <span>HorseAI</span>
+            </a>
+
+            <div class="nav-links">
+                {% if user.is_authenticated %}
+                    {% if user.is_staff %}
+                        <!-- Админ -->
+                        <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
+                            <span class="nav-link-icon">🏠</span>
+                            <span class="nav-link-text">Главная</span>
+                        </a>
+                        <a href="/super-admin/" class="nav-link {% if '/super-admin/' in request.path %}active{% endif %}">
+                            <span class="nav-link-icon">⚡</span>
+                            <span class="nav-link-text">Админ</span>
+                        </a>
+                        <a href="/profile/" class="nav-link {% if '/profile/' in request.path %}active{% endif %}">
+                            <span class="nav-link-icon">👤</span>
+                            <span class="nav-link-text">Профиль</span>
+                        </a>
+                    {% else %}
+                        <!-- Обычный пользователь -->
+                        <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
+                            <span class="nav-link-icon">🏠</span>
+                            <span class="nav-link-text">Главная</span>
+                        </a>
+                        <a href="/animals/" class="nav-link {% if '/animals/' in request.path %}active{% endif %}">
+                            <span class="nav-link-icon">🐎</span>
+                            <span class="nav-link-text">Лошади</span>
+                        </a>
+                        <a href="/video-upload/" class="nav-link {% if '/video-upload/' in request.path %}active{% endif %}">
+                            <span class="nav-link-icon">📹</span>
+                            <span class="nav-link-text">Анализ</span>
+                        </a>
+                        <a href="/analysis/results/" class="nav-link {% if '/analysis/' in request.path %}active{% endif %}">
+                            <span class="nav-link-icon">📊</span>
+                            <span class="nav-link-text">Результаты</span>
+                        </a>
+                        <a href="/ration/history/" class="nav-link {% if '/ration/history/' in request.path %}active{% endif %}">
+                            <span class="nav-link-icon">📋</span>
+                            <span class="nav-link-text">Мои рационы</span>
+                        </a>
+                        <a href="/ration/" class="nav-link {% if '/ration/' in request.path %}active{% endif %}">
+                            <span class="nav-link-icon">🥕</span>
+                            <span class="nav-link-text">Рацион</span>
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <!-- Гость -->
+                    <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
+                        <span class="nav-link-icon">🏠</span>
+                        <span class="nav-link-text">Главная</span>
+                    </a>
+                    <a href="/login/" class="nav-link {% if '/login/' in request.path %}active{% endif %}">
+                        <span class="nav-link-icon">🔑</span>
+                        <span class="nav-link-text">Вход</span>
+                    </a>
+                    <a href="/register/" class="nav-link {% if '/register/' in request.path %}active{% endif %}">
+                        <span class="nav-link-icon">📝</span>
+                        <span class="nav-link-text">Регистрация</span>
+                    </a>
+                {% endif %}
+            </div>
+
+            <div class="user-section">
+                {% if user.is_authenticated %}
+                    <div class="user-avatar" title="{{ user.username }}">
+                        {{ user.username|first|upper }}
+                    </div>
+                    <form action="/logout/" method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="logout-btn">
+                            <span class="logout-icon">🚪</span>
+                            <span>Выйти</span>
+                        </button>
+                    </form>
+                {% else %}
+                    <div class="guest-label">
+                        <span>👤</span>
+                        <span>Гость</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Уведомления -->
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            <span>
+                {% if message.tags == 'success' %} ✓
+                {% elif message.tags == 'error' %} ✗
+                {% elif message.tags == 'warning' %} ⚠
+                {% else %} ℹ
+                {% endif %}
+            </span>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Основной контент -->
+    <main class="main-container">
+        {% block content %}
+        <!-- Содержимое страницы -->
+        {% endblock %}
+    </main>
+
+    {% block extra_js %}{% endblock %}
+
+    <script>
+        // Простая инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            // Автоматическое скрытие уведомлений через 5 секунд
+            setTimeout(() => {
+                document.querySelectorAll('.alert').forEach(alert => {
+                    if (!alert.classList.contains('alert-error')) {
+                        setTimeout(() => {
+                            alert.style.opacity = '0';
+                            alert.style.transition = 'opacity 0.3s ease';
+                            setTimeout(() => alert.remove(), 300);
+                        }, 5000);
+                    }
+                });
+            }, 1000);
+
+            // Подтверждение выхода
+            document.querySelectorAll('.logout-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    if (!confirm('Вы уверены, что хотите выйти?')) {
+                        e.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

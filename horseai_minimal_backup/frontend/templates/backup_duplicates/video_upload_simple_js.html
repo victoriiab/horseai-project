@@ -1,0 +1,116 @@
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('uploadForm');
+    if (!form) {
+        console.log('Форма не найдена');
+        return;
+    }
+    
+    console.log('Форма найдена, настраиваем обработку...');
+    
+    const fileInput = document.getElementById('videoFile');
+    const submitBtn = document.getElementById('submitBtn');
+    const progressSection = document.getElementById('progressSection');
+    
+    // Обработка формы
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        console.log('Форма отправлена');
+        
+        const formData = new FormData(this);
+        const animalId = formData.get('animal_id');
+        
+        if (!animalId || animalId === '') {
+            alert('❌ Выберите животное');
+            return;
+        }
+        
+        if (!fileInput.files.length) {
+            alert('❌ Выберите видеофайл');
+            return;
+        }
+        
+        // Показываем прогресс
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>⏳</span><span>Загрузка...</span>';
+        }
+        if (progressSection) {
+            progressSection.style.display = 'block';
+            // Обновляем прогресс
+            const progressBar = document.getElementById('progressBar');
+            const progressPercent = document.getElementById('progressPercent');
+            if (progressBar) progressBar.style.width = '25%';
+            if (progressPercent) progressPercent.textContent = '25%';
+        }
+        
+        try {
+            console.log('Отправка запроса на /api/upload/simple/');
+            
+            const response = await fetch('/api/upload/simple/', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            console.log('Ответ от сервера:', data);
+            
+            if (data.success) {
+                // Обновляем прогресс
+                if (progressSection) {
+                    const progressBar = document.getElementById('progressBar');
+                    const progressPercent = document.getElementById('progressPercent');
+                    if (progressBar) progressBar.style.width = '100%';
+                    if (progressPercent) progressPercent.textContent = '100%';
+                }
+                
+                alert('✅ ' + data.message + '\nID видео: ' + data.video_id);
+                
+                // Перенаправляем на страницу результатов
+                setTimeout(() => {
+                    window.location.href = '/analysis/results/';
+                }, 1500);
+                
+            } else {
+                throw new Error(data.error || 'Ошибка загрузки');
+            }
+            
+        } catch (error) {
+            console.error('Ошибка:', error);
+            alert('❌ Ошибка: ' + error.message);
+            
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>🚀</span><span>Запустить ML анализ</span>';
+            }
+            if (progressSection) {
+                progressSection.style.display = 'none';
+            }
+        }
+    });
+    
+    // Drag & Drop (упрощенный)
+    const dropZone = document.getElementById('dropZone');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileMeta = document.getElementById('fileMeta');
+    
+    if (dropZone && fileInput) {
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0 && fileInfo && fileName && fileMeta) {
+                const file = this.files[0];
+                const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+                fileName.textContent = file.name;
+                fileMeta.textContent = `${fileSize} MB`;
+                fileInfo.style.display = 'block';
+            }
+        });
+    }
+    
+    console.log('Страница загрузки видео готова');
+});
+</script>

@@ -1,0 +1,547 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Мои лошади - HorseAI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .page-title {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .page-title::before {
+        content: '🐴';
+        font-size: 36px;
+    }
+
+    .btn-add {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, var(--sage), #4d7c0f);
+        color: white;
+        border: none;
+        border-radius: var(--radius);
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-add:hover {
+        background: linear-gradient(135deg, #84cc16, var(--sage));
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .animals-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 25px;
+        margin-bottom: 40px;
+    }
+
+    .animal-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 25px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .animal-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg), var(--glow);
+    }
+
+    .animal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 15px;
+    }
+
+    .animal-name {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .animal-badge {
+        padding: 4px 12px;
+        background: rgba(217, 119, 6, 0.2);
+        color: var(--accent);
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .animal-details {
+        margin-top: 20px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .detail-label {
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    .detail-value {
+        color: var(--text-primary);
+        font-weight: 500;
+        font-size: 15px;
+    }
+
+    .animal-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .btn-action {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-hover);
+        color: var(--text-primary);
+        font-size: 13px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-action:hover {
+        border-color: var(--accent);
+        background: var(--bg-card);
+    }
+
+    .btn-danger {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+    }
+
+    .btn-danger:hover {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: #ef4444;
+    }
+
+    /* Модальное окно */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        padding: 30px;
+        width: 90%;
+        max-width: 500px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+
+    .modal-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 24px;
+        cursor: pointer;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+
+    .form-input, .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--bg-dark);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        font-size: 15px;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 30px;
+    }
+
+    .modal-btn {
+        flex: 1;
+        padding: 14px;
+        border: none;
+        border-radius: var(--radius);
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .modal-btn-primary {
+        background: linear-gradient(135deg, var(--accent), var(--earth));
+        color: white;
+    }
+
+    .modal-btn-secondary {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+        border: 1px solid var(--border);
+    }
+
+    /* Пустое состояние */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        border: 2px dashed var(--border);
+    }
+
+    .empty-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+
+    .empty-title {
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+    }
+
+    .empty-description {
+        color: var(--text-tertiary);
+        font-size: 15px;
+        max-width: 400px;
+        margin: 0 auto 25px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Мои лошади</h1>
+    <button id="addAnimalBtn" class="btn-add" onclick="openAddModal()">
+        <span>➕</span>
+        Добавить лошадь
+    </button>
+</div>
+
+{% if animals %}
+    <div class="animals-grid" id="animalsGrid">
+        {% for animal in animals %}
+        <div class="animal-card" id="animal-{{ animal.animal_id }}">
+            <div class="animal-header">
+                <h3 class="animal-name">{{ animal.name|default:"Без имени" }}</h3>
+                {% if animal.sex %}
+                <span class="animal-badge">
+                    {% if animal.sex == 'M' %}♂️ Жеребец
+                    {% elif animal.sex == 'F' %}♀️ Кобыла
+                    {% else %}{{ animal.sex|title }}
+                    {% endif %}
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="animal-details">
+                {% if animal.age %}
+                <div class="detail-row">
+                    <span class="detail-label">Возраст:</span>
+                    <span class="detail-value">{{ animal.age }} лет</span>
+                </div>
+                {% endif %}
+
+                {% if animal.estimated_weight %}
+                <div class="detail-row">
+                    <span class="detail-label">Вес:</span>
+                    <span class="detail-value">{{ animal.estimated_weight }} кг</span>
+                </div>
+                {% endif %}
+
+                <div class="detail-row">
+                    <span class="detail-label">Добавлен:</span>
+                    <span class="detail-value">{{ animal.created_at|date:"d.m.Y" }}</span>
+                </div>
+            </div>
+
+            <div class="animal-actions">
+                <button class="btn-action" onclick="editAnimal('{{ animal.animal_id }}')">
+                    <span>✏️</span> Редактировать
+                </button>
+                <button class="btn-action btn-danger" onclick="deleteAnimal('{{ animal.animal_id }}', '{{ animal.name|escapejs }}')">
+                    <span>🗑️</span> Удалить
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🐴</div>
+        <h3 class="empty-title">У вас пока нет лошадей</h3>
+        <p class="empty-description">
+            Добавьте свою первую лошадь для начала работы с системой.
+        </p>
+        <button onclick="openAddModal()" class="btn-add">
+            <span>➕</span>
+            Добавить первую лошадь
+        </button>
+    </div>
+{% endif %}
+
+<!-- Модальное окно -->
+<div id="animalModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">🐴 Добавить лошадь</h2>
+            <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+
+        <form id="animalForm" onsubmit="saveAnimal(event)">
+            {% csrf_token %}
+            <input type="hidden" id="animalId" name="animal_id">
+
+            <div class="form-group">
+                <label class="form-label">Имя лошади *</label>
+                <input type="text" id="animalName" name="name" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Пол</label>
+                <select id="animalSex" name="sex" class="form-select">
+                    <option value="M">♂️ Жеребец</option>
+                    <option value="F">♀️ Кобыла</option>
+                    <option value="G">🐴 Мерин</option>
+                    <option value="">Не указан</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Возраст (лет)</label>
+                <input type="number" id="animalAge" name="age" class="form-input">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Вес (кг)</label>
+                <input type="number" id="animalWeight" name="weight" class="form-input">
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="modal-btn modal-btn-secondary" onclick="closeModal()">
+                    Отмена
+                </button>
+                <button type="submit" class="modal-btn modal-btn-primary">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Вспомогательные функции
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+// Функции модального окна
+function openAddModal() {
+    document.getElementById('modalTitle').textContent = '🐴 Добавить лошадь';
+    document.getElementById('animalId').value = '';
+    document.getElementById('animalName').value = '';
+    document.getElementById('animalSex').value = 'M';
+    document.getElementById('animalAge').value = '';
+    document.getElementById('animalWeight').value = '';
+    document.getElementById('animalModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('animalModal').style.display = 'none';
+}
+
+// Загрузка животного для редактирования
+async function editAnimal(animalId) {
+    try {
+        const response = await fetch(`/api/animals/${animalId}/`);
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('modalTitle').textContent = '✏️ Редактировать лошадь';
+            document.getElementById('animalId').value = data.animal_id;
+            document.getElementById('animalName').value = data.name || '';
+            document.getElementById('animalSex').value = data.sex || 'M';
+            document.getElementById('animalAge').value = data.age || '';
+            document.getElementById('animalWeight').value = data.estimated_weight || '';
+            document.getElementById('animalModal').style.display = 'flex';
+        } else {
+            alert('❌ ' + (data.error || 'Ошибка загрузки'));
+        }
+    } catch (error) {
+        alert('❌ Ошибка сети: ' + error);
+    }
+}
+
+// Удаление животного
+async function deleteAnimal(animalId, animalName) {
+    if (!confirm(`Удалить лошадь "${animalName}"?`)) return;
+    
+    try {
+        const response = await fetch(`/api/animals/${animalId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ ' + (data.error || 'Ошибка удаления'));
+        }
+    } catch (error) {
+        alert('❌ Ошибка сети: ' + error);
+    }
+}
+
+// Сохранение животного
+async function saveAnimal(event) {
+    event.preventDefault();
+    
+    const animalId = document.getElementById('animalId').value;
+    const name = document.getElementById('animalName').value.trim();
+    
+    if (!name) {
+        alert('Введите имя лошади');
+        return;
+    }
+    
+    const data = {
+        name: name,
+        sex: document.getElementById('animalSex').value,
+        age: document.getElementById('animalAge').value || null,
+        weight: document.getElementById('animalWeight').value || null
+    };
+    
+    try {
+        let response;
+        
+        if (animalId) {
+            // Обновление
+            response = await fetch(`/api/animals/${animalId}/update/`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify(data)
+            });
+        } else {
+            // Добавление
+            response = await fetch('/api/animals/add/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify(data)
+            });
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ ' + result.message);
+            closeModal();
+            location.reload();
+        } else {
+            alert('❌ ' + (result.error || 'Ошибка сохранения'));
+        }
+    } catch (error) {
+        alert('❌ Ошибка сети: ' + error);
+    }
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', function() {
+    // Закрытие модального окна при клике на фон
+    document.getElementById('animalModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal();
+        }
+    });
+    
+    // Закрытие по Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('animalModal').style.display === 'flex') {
+            closeModal();
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1288 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Расчет рациона - HorseAI{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Основные стили контейнера */
+    .ration-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .page-header {
+        margin-bottom: 40px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .page-title {
+        font-size: 36px;
+        font-weight: 700;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 10px;
+    }
+
+    .page-subtitle {
+        color: #666;
+        font-size: 16px;
+        max-width: 800px;
+    }
+
+    /* Мастер расчета */
+    .ration-wizard {
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        border: 1px solid #e0e0e0;
+        margin-bottom: 40px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .wizard-steps {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 40px;
+        position: relative;
+    }
+
+    .wizard-steps::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 50px;
+        right: 50px;
+        height: 2px;
+        background: #e0e0e0;
+        z-index: 1;
+    }
+
+    .wizard-step {
+        text-align: center;
+        position: relative;
+        z-index: 2;
+        flex: 1;
+    }
+
+    .step-number {
+        width: 40px;
+        height: 40px;
+        background: #f5f5f5;
+        border: 2px solid #e0e0e0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 10px;
+        font-weight: 700;
+        color: #666;
+        transition: all 0.3s ease;
+    }
+
+    .wizard-step.active .step-number {
+        background: #4CAF50;
+        border-color: #4CAF50;
+        color: white;
+    }
+
+    .wizard-step.completed .step-number {
+        background: #2196F3;
+        border-color: #2196F3;
+        color: white;
+    }
+
+    .step-label {
+        color: #666;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .wizard-step.active .step-label {
+        color: #333;
+        font-weight: 600;
+    }
+
+    /* Контент шагов */
+    .wizard-content {
+        display: none;
+    }
+
+    .wizard-content.active {
+        display: block;
+        animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .step-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Формы */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        color: #555;
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+
+    .form-input, .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        background: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        color: #333;
+        font-size: 15px;
+        transition: all 0.3s ease;
+    }
+
+    .form-input:focus, .form-select:focus {
+        outline: none;
+        border-color: #4CAF50;
+        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        background: white;
+    }
+
+    /* Кнопки */
+    .wizard-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+        padding-top: 30px;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    .wizard-btn {
+        padding: 12px 24px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #f5f5f5;
+        color: #333;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .wizard-btn:hover {
+        border-color: #4CAF50;
+        background: white;
+        transform: translateY(-1px);
+    }
+
+    .wizard-btn.primary {
+        background: linear-gradient(135deg, #4CAF50, #45a049);
+        color: white;
+        border: none;
+    }
+
+    .wizard-btn.primary:hover {
+        background: linear-gradient(135deg, #45a049, #3d8b40);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+
+    /* Карточки животных */
+    .animal-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .animal-card-select {
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .animal-card-select:hover {
+        border-color: #4CAF50;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .animal-card-select.selected {
+        border-color: #4CAF50;
+        background: rgba(76, 175, 80, 0.05);
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.15);
+    }
+
+    /* Результаты */
+    .ration-result {
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        border: 1px solid #e0e0e0;
+        margin-top: 40px;
+        display: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .result-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .result-header .result-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+    }
+
+    .result-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .result-subtitle {
+        color: #666;
+        font-size: 16px;
+    }
+
+    /* Питательная ценность */
+    .nutrition-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .nutrition-card {
+        background: #f9f9f9;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+    }
+
+    .nutrition-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .nutrition-label {
+        color: #666;
+        font-size: 14px;
+    }
+
+    /* Список кормов */
+    .feed-list {
+        background: #f9f9f9;
+        border-radius: 8px;
+        padding: 25px;
+        border: 1px solid #e0e0e0;
+        margin-bottom: 30px;
+    }
+
+    .feed-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 0;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .feed-item:last-child {
+        border-bottom: none;
+    }
+
+    .feed-info h4 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .feed-details {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .feed-amount {
+        text-align: right;
+    }
+
+    .feed-quantity {
+        font-size: 18px;
+        font-weight: 700;
+        color: #333;
+    }
+
+    .feed-unit {
+        color: #666;
+        font-size: 14px;
+    }
+
+    /* Стоимость */
+    .cost-inputs {
+        background: #f0f9ff;
+        border-radius: 8px;
+        padding: 25px;
+        margin: 20px 0;
+        border: 1px solid #bbdefb;
+    }
+
+    .cost-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .cost-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .cost-label {
+        color: #555;
+        font-size: 14px;
+        margin-bottom: 5px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .cost-unit {
+        color: #888;
+        font-size: 12px;
+    }
+
+    .cost-input {
+        padding: 10px 12px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        color: #333;
+        font-size: 15px;
+    }
+
+    .cost-summary {
+        background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(33, 150, 243, 0.1));
+        border: 1px solid rgba(76, 175, 80, 0.3);
+        border-radius: 8px;
+        padding: 25px;
+        margin-top: 20px;
+    }
+
+    .cost-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .cost-row:last-child {
+        border-bottom: none;
+        font-weight: 700;
+        font-size: 18px;
+        color: #333;
+        padding-top: 15px;
+        margin-top: 10px;
+        border-top: 2px solid rgba(76, 175, 80, 0.5);
+    }
+
+    .cost-amount {
+        font-weight: 600;
+        color: #4CAF50;
+    }
+
+    /* Рекомендации */
+    .recommendations {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        border-radius: 8px;
+        padding: 25px;
+        margin-top: 30px;
+    }
+
+    .recommendations-title {
+        color: #FF9800;
+        font-weight: 600;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .recommendations-list {
+        color: #333;
+        line-height: 1.6;
+        padding-left: 20px;
+    }
+
+    .recommendations-list li {
+        margin-bottom: 8px;
+    }
+
+    /* Действия с результатом */
+    .result-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 30px;
+    }
+
+    /* Хромота */
+    .lameness-alert {
+        background: linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(244, 67, 54, 0.2));
+        border: 2px solid #f44336;
+        border-radius: 8px;
+        padding: 25px;
+        margin: 20px 0;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { border-color: #f44336; }
+        50% { border-color: #ff7961; }
+        100% { border-color: #f44336; }
+    }
+
+    /* Реабилитационные добавки */
+    .rehab-supplements {
+        background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.2));
+        border: 1px solid #4CAF50;
+        border-radius: 8px;
+        padding: 25px;
+        margin-top: 20px;
+    }
+
+    .supplement-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .supplement-item {
+        background: white;
+        border-radius: 6px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .supplement-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .supplement-dose {
+        color: #4CAF50;
+        font-size: 14px;
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .ration-wizard {
+            padding: 20px;
+        }
+
+        .wizard-steps {
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .wizard-steps::before {
+            display: none;
+        }
+
+        .animal-cards {
+            grid-template-columns: 1fr;
+        }
+
+        .form-grid, .cost-grid, .nutrition-grid, .supplement-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .result-actions {
+            flex-direction: column;
+        }
+
+        .wizard-actions {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .wizard-actions button {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ration-container">
+    <div class="page-header">
+        <h1 class="page-title">🥗 Расчет рациона</h1>
+        <p class="page-subtitle">
+            Рассчитайте оптимальный рацион питания для вашей лошади с учетом всех параметров
+        </p>
+    </div>
+
+    <!-- Проверка на хромоту (показывается если выбрана лошадь с хромотой) -->
+    <div class="lameness-alert" id="lamenessCheck" style="display: none;">
+        <h3 style="color: #f44336; margin-bottom: 15px; display: flex; align-items: center;">
+            ⚠️ Обнаружена хромота!
+        </h3>
+        <p style="color: #333; margin-bottom: 15px;">
+            У этой лошади обнаружены признаки хромоты. Рекомендуется специальный рацион для восстановления.
+        </p>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+            <button class="wizard-btn" onclick="useNormalDiet()">
+                🐴 Использовать обычный рацион
+            </button>
+            <button class="wizard-btn primary" onclick="useRehabDiet()">
+                🏥 Использовать реабилитационный рацион
+            </button>
+        </div>
+    </div>
+
+    <!-- Мастер расчета -->
+    <div class="ration-wizard">
+        <div class="wizard-steps">
+            <div class="wizard-step active" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-label">Выбор лошади</div>
+            </div>
+            <div class="wizard-step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-label">Параметры</div>
+            </div>
+            <div class="wizard-step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-label">Активность</div>
+            </div>
+            <div class="wizard-step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-label">Стоимость</div>
+            </div>
+            <div class="wizard-step" id="step5">
+                <div class="step-number">5</div>
+                <div class="step-label">Результат</div>
+            </div>
+        </div>
+
+        <!-- Шаг 1: Выбор лошади -->
+        <div class="wizard-content active" id="step1Content">
+            <h2 class="step-title">🐴 Выберите лошадь</h2>
+
+            {% if animals %}
+                <div class="animal-cards" id="animalCards">
+                    {% for animal in animals %}
+                    <div class="animal-card-select" 
+                         data-animal-id="{{ animal.animal_id }}"
+                         onclick="selectAnimal(this)">
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                            <div style="width: 60px; height: 60px; border-radius: 50%; 
+                                        background: linear-gradient(135deg, #4CAF50, #2196F3);
+                                        display: flex; align-items: center; justify-content: center; 
+                                        font-size: 24px; color: white; font-weight: 600;">
+                                {{ animal.name|first|upper }}
+                            </div>
+                            <div>
+                                <h3 style="margin: 0; color: #333;">
+                                    {{ animal.name|default:"Без имени" }}
+                                </h3>
+                                <p style="margin: 5px 0 0; color: #666; font-size: 14px;">
+                                    {% if animal.age %}{{ animal.age }} лет{% endif %}
+                                    {% if animal.estimated_weight %} • {{ animal.estimated_weight }} кг{% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="wizard-actions">
+                    <div></div>
+                    <button class="wizard-btn primary" onclick="nextStep()">
+                        Далее →
+                    </button>
+                </div>
+            {% else %}
+                <div style="text-align: center; padding: 40px 20px;">
+                    <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.5;">🐴</div>
+                    <h3 style="color: #666; margin-bottom: 15px;">У вас нет лошадей</h3>
+                    <a href="/animals/" class="wizard-btn primary" style="display: inline-flex;">
+                        ➕ Добавить лошадь
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Шаг 2: Параметры -->
+        <div class="wizard-content" id="step2Content">
+            <h2 class="step-title">📏 Физические параметры</h2>
+
+            <!-- Чекбокс для указания хромоты -->
+            <div style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+                    <input type="checkbox" id="lamenessCheckbox" style="width: 20px; height: 20px;">
+                    <label for="lamenessCheckbox" style="color: #333; font-weight: 600;">
+                        🩺 У лошади есть признаки хромоты
+                    </label>
+                </div>
+                <p style="color: #666; font-size: 14px; margin-left: 35px;">
+                    Если отмечено, будет рассчитан специальный реабилитационный рацион
+                </p>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Вес (кг)</label>
+                    <input type="number" id="weightInput" class="form-input" value="520" min="100" max="1000">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Рост (см)</label>
+                    <input type="number" id="heightInput" class="form-input" value="160" min="80" max="200">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Порода</label>
+                    <select id="breedSelect" class="form-select">
+                        <option value="light">Легкая</option>
+                        <option value="medium" selected>Средняя</option>
+                        <option value="heavy">Тяжелая</option>
+                        <option value="pony">Пони</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Состояние тела</label>
+                    <select id="bodyConditionSelect" class="form-select">
+                        <option value="thin">Худое</option>
+                        <option value="normal" selected>Нормальное</option>
+                        <option value="overweight">Полное</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="wizard-actions">
+                <button class="wizard-btn" onclick="prevStep()">
+                    ← Назад
+                </button>
+                <button class="wizard-btn primary" onclick="nextStep()">
+                    Далее →
+                </button>
+            </div>
+        </div>
+
+        <!-- Шаг 3: Активность -->
+        <div class="wizard-content" id="step3Content">
+            <h2 class="step-title">🏃 Уровень активности</h2>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Тип нагрузки</label>
+                    <select id="workloadSelect" class="form-select">
+                        <option value="none">Без работы</option>
+                        <option value="light">Легкая работа</option>
+                        <option value="medium" selected>Средняя работа</option>
+                        <option value="heavy">Тяжелая работа</option>
+                        <option value="competition">Соревнования</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Состояние здоровья</label>
+                    <select id="healthSelect" class="form-select">
+                        <option value="excellent">Отличное</option>
+                        <option value="good" selected>Хорошее</option>
+                        <option value="recovering">Восстановление</option>
+                        <option value="pregnant">Беременность</option>
+                        <option value="elderly">Пожилой</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Особые потребности</label>
+                    <select id="specialNeedsSelect" class="form-select">
+                        <option value="none" selected>Нет</option>
+                        <option value="joints">Проблемы с суставами</option>
+                        <option value="metabolic">Метаболические нарушения</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Цель кормления</label>
+                    <select id="goalSelect" class="form-select">
+                        <option value="maintain" selected>Поддержание веса</option>
+                        <option value="gain">Набор веса</option>
+                        <option value="lose">Снижение веса</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="wizard-actions">
+                <button class="wizard-btn" onclick="prevStep()">
+                    ← Назад
+                </button>
+                <button class="wizard-btn primary" onclick="nextStep()">
+                    Далее →
+                </button>
+            </div>
+        </div>
+
+        <!-- Шаг 4: Стоимость кормов -->
+        <div class="wizard-content" id="step4Content">
+            <h2 class="step-title">💰 Стоимость кормов</h2>
+            
+            <p style="color: #666; margin-bottom: 20px;">
+                Укажите цены на корма в вашем регионе для расчета стоимости рациона
+            </p>
+
+            <div class="cost-inputs">
+                <h3 style="color: #333; margin-bottom: 20px; font-size: 18px;">Цены за 1 кг (в рублях)</h3>
+                
+                <div class="cost-grid">
+                    <div class="cost-item">
+                        <div class="cost-label">
+                            <span>Сено луговое</span>
+                            <span class="cost-unit">руб/кг</span>
+                        </div>
+                        <input type="number" id="hayPrice" class="cost-input" value="25" min="5" max="100" step="0.1">
+                    </div>
+                    
+                    <div class="cost-item">
+                        <div class="cost-label">
+                            <span>Овес</span>
+                            <span class="cost-unit">руб/кг</span>
+                        </div>
+                        <input type="number" id="oatsPrice" class="cost-input" value="40" min="10" max="100" step="0.1">
+                    </div>
+                    
+                    <div class="cost-item">
+                        <div class="cost-label">
+                            <span>Отруби пшеничные</span>
+                            <span class="cost-unit">руб/кг</span>
+                        </div>
+                        <input type="number" id="branPrice" class="cost-input" value="35" min="10" max="100" step="0.1">
+                    </div>
+                    
+                    <div class="cost-item">
+                        <div class="cost-label">
+                            <span>Морковь</span>
+                            <span class="cost-unit">руб/кг</span>
+                        </div>
+                        <input type="number" id="carrotPrice" class="cost-input" value="30" min="5" max="100" step="0.1">
+                    </div>
+                    
+                    <div class="cost-item">
+                        <div class="cost-label">
+                            <span>Премикс</span>
+                            <span class="cost-unit">руб/кг</span>
+                        </div>
+                        <input type="number" id="premixPrice" class="cost-input" value="500" min="100" max="2000" step="1">
+                    </div>
+                </div>
+                
+                <div style="color: #888; font-size: 13px; margin-top: 15px;">
+                    💡 Цены по умолчанию основаны на среднерыночных значениях. 
+                    Вы можете изменить их в соответствии с ценами в вашем регионе.
+                </div>
+            </div>
+
+            <div class="wizard-actions">
+                <button class="wizard-btn" onclick="prevStep()">
+                    ← Назад
+                </button>
+                <button class="wizard-btn primary" id="calculateBtn" onclick="calculateRation()">
+                    🥗 Рассчитать рацион
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Результаты расчета -->
+    <div class="ration-result" id="rationResult">
+        <div class="result-header">
+            <div class="result-icon">🥗</div>
+            <h2 class="result-title">Рацион рассчитан!</h2>
+            <p class="result-subtitle">Рекомендации по кормлению на основе введенных параметров</p>
+        </div>
+
+        <div class="nutrition-grid">
+            <div class="nutrition-card">
+                <div class="nutrition-value" id="totalDMI">12.5</div>
+                <div class="nutrition-label">Сухого вещества (кг/день)</div>
+            </div>
+            <div class="nutrition-card">
+                <div class="nutrition-value" id="energyValue">18.5</div>
+                <div class="nutrition-label">Энергия (Мкал/день)</div>
+            </div>
+            <div class="nutrition-card">
+                <div class="nutrition-value" id="proteinValue">1.2</div>
+                <div class="nutrition-label">Белок (кг/день)</div>
+            </div>
+            <div class="nutrition-card">
+                <div class="nutrition-value" id="fiberValue">7.5</div>
+                <div class="nutrition-label">Клетчатка (кг/день)</div>
+            </div>
+        </div>
+
+        <div class="feed-list">
+            <h3 style="color: #333; margin-bottom: 20px;">Рекомендуемый рацион</h3>
+
+            <div class="feed-item">
+                <div class="feed-info">
+                    <h4>Сено луговое</h4>
+                    <div class="feed-details">Основной корм, источник клетчатки</div>
+                </div>
+                <div class="feed-amount">
+                    <div class="feed-quantity" id="hayAmount">8.0</div>
+                    <div class="feed-unit">кг/день</div>
+                </div>
+            </div>
+
+            <div class="feed-item">
+                <div class="feed-info">
+                    <h4>Овес</h4>
+                    <div class="feed-details">Энергетическая добавка</div>
+                </div>
+                <div class="feed-amount">
+                    <div class="feed-quantity" id="oatsAmount">2.5</div>
+                    <div class="feed-unit">кг/день</div>
+                </div>
+            </div>
+
+            <div class="feed-item">
+                <div class="feed-info">
+                    <h4>Отруби пшеничные</h4>
+                    <div class="feed-details">Пищевые волокна</div>
+                </div>
+                <div class="feed-amount">
+                    <div class="feed-quantity" id="branAmount">1.0</div>
+                    <div class="feed-unit">кг/день</div>
+                </div>
+            </div>
+
+            <div class="feed-item">
+                <div class="feed-info">
+                    <h4>Морковь</h4>
+                    <div class="feed-details">Витаминная добавка</div>
+                </div>
+                <div class="feed-amount">
+                    <div class="feed-quantity" id="carrotAmount">2.0</div>
+                    <div class="feed-unit">кг/день</div>
+                </div>
+            </div>
+
+            <div class="feed-item">
+                <div class="feed-info">
+                    <h4>Премикс витаминный</h4>
+                    <div class="feed-details">Витамины и минералы</div>
+                </div>
+                <div class="feed-amount">
+                    <div class="feed-quantity" id="premixAmount">100</div>
+                    <div class="feed-unit">г/день</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Стоимость рациона -->
+        <div class="cost-summary">
+            <h3 style="color: #333; margin-bottom: 20px;">💰 Стоимость рациона</h3>
+            
+            <div class="cost-row">
+                <span>Сено луговое:</span>
+                <span class="cost-amount" id="hayCost">0.00 руб/день</span>
+            </div>
+            
+            <div class="cost-row">
+                <span>Овес:</span>
+                <span class="cost-amount" id="oatsCost">0.00 руб/день</span>
+            </div>
+            
+            <div class="cost-row">
+                <span>Отруби пшеничные:</span>
+                <span class="cost-amount" id="branCost">0.00 руб/день</span>
+            </div>
+            
+            <div class="cost-row">
+                <span>Морковь:</span>
+                <span class="cost-amount" id="carrotCost">0.00 руб/день</span>
+            </div>
+            
+            <div class="cost-row">
+                <span>Премикс:</span>
+                <span class="cost-amount" id="premixCost">0.00 руб/день</span>
+            </div>
+            
+            <div class="cost-row">
+                <span>Итого за день:</span>
+                <span class="cost-amount" id="totalDayCost">0.00 руб</span>
+            </div>
+            
+            <div class="cost-row">
+                <span>Итого за месяц (30 дней):</span>
+                <span class="cost-amount" id="totalMonthCost">0.00 руб</span>
+            </div>
+            
+            <div class="cost-row">
+                <span><strong>Общая стоимость рациона:</strong></span>
+                <span class="cost-amount" id="totalCost" style="font-size: 20px; color: #4CAF50;">0.00 руб/месяц</span>
+            </div>
+        </div>
+
+        <!-- Реабилитационные добавки (показывается только при хромоте) -->
+        <div class="rehab-supplements" id="rehabSupplements" style="display: none;">
+            <h4 class="recommendations-title">
+                🏥 Реабилитационные добавки (рекомендуются при хромоте)
+            </h4>
+            
+            <div class="supplement-grid" id="supplementsGrid">
+                <!-- Добавки будут добавлены через JavaScript -->
+            </div>
+            
+            <p style="color: #666; font-size: 14px; margin-top: 15px;">
+                💡 Эти добавки помогут ускорить восстановление суставов и уменьшить воспаление
+            </p>
+        </div>
+
+        <!-- Рекомендации -->
+        <div class="recommendations">
+            <h4 class="recommendations-title">
+                💡 Рекомендации по кормлению
+            </h4>
+            <ul class="recommendations-list" id="recommendationsList">
+                <li>Разделите суточную норму на 3-4 кормления</li>
+                <li>Сено должно быть доступно постоянно</li>
+                <li>Концентраты давайте после сена</li>
+                <li>Обеспечьте постоянный доступ к чистой воде</li>
+                <li>Взвешивайте корма для точности</li>
+            </ul>
+        </div>
+
+        <div class="result-actions">
+            <button class="wizard-btn" onclick="restartWizard()">
+                🔄 Новый расчет
+            </button>
+            <button class="wizard-btn primary" onclick="saveRation()">
+                💾 Сохранить рацион
+            </button>
+            <button class="wizard-btn" onclick="window.print()">
+                🖨️ Распечатать
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Глобальные переменные
+let currentStep = 1;
+let selectedAnimalId = null;
+let hasLameness = false;
+
+// Функция выбора животного
+function selectAnimal(element) {
+    // Снимаем выделение со всех карточек
+    document.querySelectorAll('.animal-card-select').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Выделяем выбранную
+    element.classList.add('selected');
+    selectedAnimalId = element.dataset.animalId;
+    
+    // Проверяем чекбокс хромоты (можно связать с данными животного)
+    const isLame = element.dataset.isLame === 'true';
+    if (isLame) {
+        document.getElementById('lamenessCheck').style.display = 'block';
+        document.getElementById('lamenessCheckbox').checked = true;
+        hasLameness = true;
+    }
+}
+
+// Переход к следующему шагу
+function nextStep() {
+    // Валидация
+    if (currentStep === 1 && !selectedAnimalId) {
+        alert('Пожалуйста, выберите лошадь');
+        return;
+    }
+    
+    if (currentStep === 2) {
+        const weight = document.getElementById('weightInput').value;
+        if (!weight || weight < 100 || weight > 1000) {
+            alert('Пожалуйста, введите корректный вес (100-1000 кг)');
+            return;
+        }
+    }
+
+    // Скрываем текущий шаг
+    document.getElementById(`step${currentStep}Content`).classList.remove('active');
+    document.getElementById(`step${currentStep}`).classList.remove('active');
+
+    // Переходим к следующему
+    currentStep++;
+    document.getElementById(`step${currentStep}Content`).classList.add('active');
+    document.getElementById(`step${currentStep}`).classList.add('active');
+
+    updateStepIndicators();
+}
+
+// Назад
+function prevStep() {
+    document.getElementById(`step${currentStep}Content`).classList.remove('active');
+    document.getElementById(`step${currentStep}`).classList.remove('active');
+
+    currentStep--;
+    document.getElementById(`step${currentStep}Content`).classList.add('active');
+    document.getElementById(`step${currentStep}`).classList.add('active');
+
+    updateStepIndicators();
+}
+
+// Обновление индикаторов
+function updateStepIndicators() {
+    for (let i = 1; i < currentStep; i++) {
+        document.getElementById(`step${i}`).classList.add('completed');
+        document.getElementById(`step${i}`).classList.remove('active');
+    }
+
+    document.getElementById(`step${currentStep}`).classList.add('active');
+    document.getElementById(`step${currentStep}`).classList.remove('completed');
+
+    for (let i = currentStep + 1; i <= 5; i++) {
+        document.getElementById(`step${i}`).classList.remove('active', 'completed');
+    }
+}
+
+// Использовать обычный рацион
+function useNormalDiet() {
+    hasLameness = false;
+    document.getElementById('lamenessCheck').style.display = 'none';
+    document.getElementById('lamenessCheckbox').checked = false;
+}
+
+// Использовать реабилитационный рацион
+function useRehabDiet() {
+    hasLameness = true;
+    document.getElementById('lamenessCheck').style.display = 'none';
+    document.getElementById('lamenessCheckbox').checked = true;
+}
+
+// Расчет рациона
+function calculateRation() {
+    // Проверяем чекбокс хромоты
+    hasLameness = document.getElementById('lamenessCheckbox').checked;
+    
+    // Собираем данные
+    const weight = parseFloat(document.getElementById('weightInput').value) || 500;
+    const activity = document.getElementById('workloadSelect').value;
+    const health = document.getElementById('healthSelect').value;
+    const breed = document.getElementById('breedSelect').value;
+    const goal = document.getElementById('goalSelect').value;
+    
+    // Цены
+    const hayPrice = parseFloat(document.getElementById('hayPrice').value) || 25;
+    const oatsPrice = parseFloat(document.getElementById('oatsPrice').value) || 40;
+    const branPrice = parseFloat(document.getElementById('branPrice').value) || 35;
+    const carrotPrice = parseFloat(document.getElementById('carrotPrice').value) || 30;
+    const premixPrice = parseFloat(document.getElementById('premixPrice').value) || 500;
+
+    // Базовый расчет
+    let dmi = weight * 0.025;
+    
+    // Коррекции при хромоте
+    if (hasLameness) {
+        // При хромоте меньше энергии если на покое
+        if (activity === 'none' || activity === 'light') {
+            dmi *= 0.9;
+        }
+        // Белка больше на 20%
+        var proteinMultiplier = 1.2;
+    } else {
+        // Обычные коррекции
+        if (activity === 'light') dmi *= 1.05;
+        if (activity === 'medium') dmi *= 1.1;
+        if (activity === 'heavy') dmi *= 1.15;
+        if (activity === 'competition') dmi *= 1.2;
+        var proteinMultiplier = 1.0;
+    }
+    
+    // Другие коррекции
+    if (health === 'recovering') dmi *= 1.1;
+    if (health === 'pregnant') dmi *= 1.15;
+    if (health === 'elderly') dmi *= 0.95;
+    if (breed === 'heavy') dmi *= 1.05;
+    if (breed === 'pony') dmi *= 0.9;
+    if (goal === 'gain') dmi *= 1.1;
+    if (goal === 'lose') dmi *= 0.9;
+    
+    // Распределение кормов
+    let hayPercent = hasLameness ? 0.70 : 0.65;
+    let grainPercent = hasLameness ? 0.20 : 0.25;
+    let supplementPercent = 0.08;
+    
+    const hayAmount = dmi * hayPercent * (100/85);
+    const grainAmount = dmi * grainPercent * (100/87);
+    const supplementAmount = dmi * supplementPercent * (100/88);
+    const vegetableAmount = 2.0;
+    const premixAmount = 0.1;
+    
+    // Стоимость
+    const hayCost = hayAmount * hayPrice;
+    const oatsCost = grainAmount * oatsPrice;
+    const branCost = supplementAmount * branPrice;
+    const carrotCost = vegetableAmount * carrotPrice;
+    const premixCost = premixAmount * premixPrice;
+    const totalDayCost = hayCost + oatsCost + branCost + carrotCost + premixCost;
+    const totalMonthCost = totalDayCost * 30;
+    
+    // Обновляем UI
+    document.getElementById('totalDMI').textContent = dmi.toFixed(2);
+    document.getElementById('energyValue').textContent = (dmi * 8.5).toFixed(1);
+    document.getElementById('proteinValue').textContent = (dmi * 0.1 * proteinMultiplier).toFixed(2);
+    document.getElementById('fiberValue').textContent = (dmi * 0.6).toFixed(2);
+    
+    document.getElementById('hayAmount').textContent = hayAmount.toFixed(2);
+    document.getElementById('oatsAmount').textContent = grainAmount.toFixed(2);
+    document.getElementById('branAmount').textContent = supplementAmount.toFixed(2);
+    document.getElementById('carrotAmount').textContent = vegetableAmount.toFixed(2);
+    document.getElementById('premixAmount').textContent = (premixAmount * 1000).toFixed(0);
+    
+    document.getElementById('hayCost').textContent = hayCost.toFixed(2) + ' руб/день';
+    document.getElementById('oatsCost').textContent = oatsCost.toFixed(2) + ' руб/день';
+    document.getElementById('branCost').textContent = branCost.toFixed(2) + ' руб/день';
+    document.getElementById('carrotCost').textContent = carrotCost.toFixed(2) + ' руб/день';
+    document.getElementById('premixCost').textContent = premixCost.toFixed(2) + ' руб/день';
+    document.getElementById('totalDayCost').textContent = totalDayCost.toFixed(2) + ' руб';
+    document.getElementById('totalMonthCost').textContent = totalMonthCost.toFixed(2) + ' руб';
+    document.getElementById('totalCost').textContent = totalMonthCost.toFixed(2) + ' руб/месяц';
+    
+    // Рекомендации
+    let recommendations = [
+        "Разделите суточную норму на 3-4 кормления",
+        "Сено должно быть доступно постоянно",
+        "Концентраты давайте после сена",
+        "Обеспечьте постоянный доступ к чистой воде",
+        "Взвешивайте корма для точности"
+    ];
+    
+    if (hasLameness) {
+        recommendations = [
+            "🏥 РЕАБИЛИТАЦИОННЫЙ РАЦИОН:",
+            "Увеличено содержание белка на 20% для восстановления тканей",
+            "Уменьшена доля крахмалистых кормов",
+            "Увеличена доля сена для здоровья ЖКТ",
+            "Рекомендуется покой и ограничение нагрузок",
+            "Контролируйте вес - лишний вес усугубляет хромоту"
+        ];
+        
+        // Показываем добавки
+        document.getElementById('rehabSupplements').style.display = 'block';
+        const supplements = [
+            { name: "Глюкозамин", dose: "10,000-15,000 мг/день", purpose: "Восстановление хряща" },
+            { name: "Хондроитин", dose: "2,000-4,000 мг/день", purpose: "Защита суставов" },
+            { name: "МСМ", dose: "10,000-20,000 мг/день", purpose: "Противовоспалительное" },
+            { name: "Омега-3", dose: "30-60 мл/день", purpose: "Снижение воспаления" }
+        ];
+        
+        document.getElementById('supplementsGrid').innerHTML = supplements.map(s => `
+            <div class="supplement-item">
+                <div class="supplement-name">${s.name}</div>
+                <div class="supplement-dose">${s.dose}</div>
+                <div style="color: #666; font-size: 12px; margin-top: 5px;">${s.purpose}</div>
+            </div>
+        `).join('');
+    } else {
+        document.getElementById('rehabSupplements').style.display = 'none';
+    }
+    
+    // Общие рекомендации
+    if (health === 'recovering') recommendations.push("Увеличьте долю белка для восстановления");
+    if (activity === 'competition') recommendations.push("За 2 часа до соревнований не давайте концентраты");
+    if (goal === 'lose') recommendations.push("Увеличьте время выпаса для снижения веса");
+    if (hayCost > totalDayCost * 0.5) recommendations.push("💡 Сено >50% стоимости - рассмотрите покупку оптом");
+    
+    document.getElementById('recommendationsList').innerHTML = recommendations.map(r => `<li>${r}</li>`).join('');
+    
+    // Показываем результаты
+    document.querySelector('.ration-wizard').style.display = 'none';
+    document.getElementById('rationResult').style.display = 'block';
+    
+    // Обновляем шаги
+    for (let i = 1; i <= 5; i++) {
+        document.getElementById(`step${i}`).classList.add('completed');
+        document.getElementById(`step${i}`).classList.remove('active');
+    }
+}
+
+// Начать заново
+function restartWizard() {
+    document.querySelector('.ration-wizard').style.display = 'block';
+    document.getElementById('rationResult').style.display = 'none';
+    currentStep = 1;
+    updateStepIndicators();
+    document.getElementById('step1Content').classList.add('active');
+    document.getElementById('step1').classList.add('active');
+    
+    for (let i = 2; i <= 5; i++) {
+        document.getElementById(`step${i}Content`).classList.remove('active');
+    }
+}
+
+// Сохранить рацион
+function saveRation() {
+    const weight = document.getElementById('weightInput').value;
+    const totalMonthCost = document.getElementById('totalMonthCost').textContent;
+    alert(`✅ Рацион сохранен!\nВес: ${weight} кг\nСтоимость: ${totalMonthCost}/месяц`);
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', function() {
+    // Выбираем первое животное
+    const firstCard = document.querySelector('.animal-card-select');
+    if (firstCard) {
+        selectAnimal(firstCard);
+    }
+    
+    // Следим за чекбоксом хромоты
+    document.getElementById('lamenessCheckbox').addEventListener('change', function() {
+        hasLameness = this.checked;
+    });
+});
+</script>
+{% endblock %}

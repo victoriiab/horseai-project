@@ -1,0 +1,1042 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Анализ #{{ analysis_id }} - HorseAI{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --bg-dark: #121826;
+        --bg-card: #1e2436;
+        --border: #2a3246;
+        --text-primary: #e4e8f0;
+        --text-secondary: #a0abc0;
+        --text-tertiary: #6b7280;
+        --accent: #d97706;
+        --accent-hover: #f59e0b;
+        --success: #10b981;
+        --error: #ef4444;
+        --warning: #f59e0b;
+        --info: #3b82f6;
+        --radius: 8px;
+    }
+
+    .analysis-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Шапка */
+    .analysis-header {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 30px;
+        border: 1px solid var(--border);
+    }
+
+    .analysis-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .analysis-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .meta-label {
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .meta-value {
+        color: var(--text-primary);
+        font-size: 16px;
+        font-weight: 600;
+        word-break: break-word;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: var(--radius);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .status-badge.healthy {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-badge.lame {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Метрики */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .metric-card {
+        background: var(--bg-card);
+        border-radius: 10px;
+        padding: 20px;
+        border: 1px solid var(--border);
+    }
+
+    .metric-title {
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .metric-value {
+        color: var(--text-primary);
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .metric-description {
+        color: var(--text-tertiary);
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 10px 0;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.5s ease;
+    }
+
+    .progress-healthy {
+        background: linear-gradient(90deg, #10b981, #34d399);
+    }
+
+    .progress-lame {
+        background: linear-gradient(90deg, #ef4444, #fca5a5);
+    }
+
+    /* Видео */
+    .video-section {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        margin-bottom: 30px;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .video-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+        .video-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .video-card {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        overflow: hidden;
+    }
+
+    .video-header {
+        padding: 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .video-header h3 {
+        font-size: 14px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        margin: 0;
+    }
+
+    .video-container {
+        position: relative;
+        background: #000;
+        min-height: 250px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .video-player {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        max-height: 300px;
+        object-fit: contain;
+        display: block;
+    }
+
+    .video-placeholder {
+        color: var(--text-tertiary);
+        text-align: center;
+        padding: 40px 20px;
+        width: 100%;
+    }
+
+    .video-placeholder-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+
+    .video-info {
+        padding: 15px;
+    }
+
+    .video-filename {
+        color: var(--text-primary);
+        font-size: 13px;
+        font-weight: 500;
+        margin-bottom: 10px;
+        word-break: break-all;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.4;
+        max-height: 2.8em;
+        cursor: help;
+    }
+
+    .video-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .video-status {
+        color: var(--text-secondary);
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .status-available {
+        background: var(--success);
+    }
+
+    .status-warning {
+        background: var(--warning);
+    }
+
+    .status-error {
+        background: var(--error);
+    }
+
+    .status-info {
+        background: var(--info);
+    }
+
+    .btn-download {
+        padding: 6px 12px;
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+        border-radius: var(--radius);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .btn-download:hover:not(:disabled) {
+        border-color: var(--accent);
+        background: rgba(217, 119, 6, 0.1);
+    }
+
+    .btn-download:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Отчеты */
+    .reports-section {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        margin-bottom: 30px;
+    }
+
+    .report-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 15px;
+        overflow-x: auto;
+    }
+
+    .report-tab {
+        padding: 10px 20px;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: var(--radius);
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .report-tab:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+    }
+
+    .report-tab.active {
+        background: var(--accent);
+        color: white;
+    }
+
+    .report-content {
+        min-height: 200px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        margin-bottom: 20px;
+    }
+
+    .text-report {
+        color: var(--text-primary);
+        line-height: 1.6;
+        white-space: pre-wrap;
+        font-family: monospace;
+        font-size: 14px;
+        word-break: break-word;
+    }
+
+    .graphic-report {
+        width: 100%;
+        height: auto;
+        border-radius: 8px;
+        display: block;
+        margin: 0 auto;
+        max-width: 100%;
+    }
+
+    .report-not-found {
+        color: var(--text-tertiary);
+        text-align: center;
+        padding: 40px 20px;
+        font-style: italic;
+    }
+
+    /* Действия */
+    .actions-section {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid var(--border);
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+
+    .action-button {
+        padding: 15px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: transparent;
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        text-align: center;
+    }
+
+    .action-button:hover {
+        border-color: var(--accent);
+        background: rgba(217, 119, 6, 0.1);
+    }
+
+    .action-button.delete:hover {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+        color: #fca5a5;
+    }
+
+    .action-icon {
+        font-size: 24px;
+    }
+
+    /* Загрузка */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(5px);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid rgba(217, 119, 6, 0.3);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Уведомления */
+    .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 9998;
+        animation: slideIn 0.3s ease;
+        max-width: 350px;
+        background: var(--bg-card);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .toast-success {
+        color: #34d399;
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .toast-error {
+        color: #fca5a5;
+        border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .analysis-container {
+            padding: 15px;
+        }
+
+        .analysis-header,
+        .video-section,
+        .reports-section,
+        .metric-card,
+        .actions-section {
+            padding: 15px;
+        }
+
+        .analysis-meta {
+            grid-template-columns: 1fr;
+        }
+
+        .metrics-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .report-tabs {
+            overflow-x: auto;
+        }
+
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .video-player {
+            max-height: 200px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analysis-container">
+    <!-- Шапка анализа -->
+    <div class="analysis-header">
+        <h1 class="analysis-title">
+            <span>🔍</span>
+            Анализ походки
+        </h1>
+
+        <div class="analysis-meta">
+            <div class="meta-item">
+                <span class="meta-label">ID анализа</span>
+                <span class="meta-value" id="analysisId">#{{ analysis_id }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Статус</span>
+                <span class="meta-value" id="statusText">Загрузка...</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Дата анализа</span>
+                <span class="meta-value" id="analysisDate">Загрузка...</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Лошадь</span>
+                <span class="meta-value" id="animalName">Загрузка...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Метрики -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-title">
+                <span>🎯</span>
+                Вероятность хромоты
+            </div>
+            <div class="metric-value" id="lamenessProbability">0%</div>
+            <div class="progress-bar">
+                <div class="progress-fill progress-healthy" id="probabilityBar" style="width: 0%"></div>
+            </div>
+            <div class="metric-description" id="probabilityDescription">
+                Загрузка...
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-title">
+                <span>📊</span>
+                Уверенность анализа
+            </div>
+            <div class="metric-value" id="analysisConfidence">0%</div>
+            <div class="progress-description" id="confidenceDescription">
+                Загрузка...
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-title">
+                <span>⚙️</span>
+                Модель анализа
+            </div>
+            <div class="metric-value" id="modelName">SuperAnimal</div>
+            <div class="metric-description">
+                Quadruped HRNet W32
+            </div>
+        </div>
+    </div>
+
+    <!-- Видео -->
+    <div class="video-section">
+        <h2 class="section-title">
+            <span>🎬</span>
+            Видео материалы
+        </h2>
+
+        <div class="video-grid">
+            <!-- Оригинальное видео -->
+            <div class="video-card">
+                <div class="video-header">
+                    <h3>
+                        <span>🎥</span>
+                        Оригинальное видео
+                    </h3>
+                </div>
+                <div class="video-container" id="originalVideoContainer">
+                    <div class="video-placeholder" id="originalVideoPlaceholder">
+                        <div class="video-placeholder-icon">🎥</div>
+                        Загрузка видео...
+                    </div>
+                    <video class="video-player" id="originalVideoPlayer" controls preload="metadata" style="display: none;">
+                        Ваш браузер не поддерживает видео.
+                    </video>
+                </div>
+                <div class="video-info">
+                    <div class="video-filename" id="originalFilename" title="Загрузка...">
+                        Загрузка...
+                    </div>
+                    <div class="video-actions">
+                        <div class="video-status">
+                            <span class="status-dot" id="originalStatusDot"></span>
+                            <span id="originalStatusText">Загрузка...</span>
+                        </div>
+                        <button class="btn-download" id="downloadOriginalBtn" onclick="downloadOriginalVideo()" disabled>
+                            <span>⬇️</span>
+                            Скачать
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Размеченное видео -->
+            <div class="video-card">
+                <div class="video-header">
+                    <h3>
+                        <span>🎯</span>
+                        Видео с разметкой ML
+                    </h3>
+                </div>
+                <div class="video-container" id="annotatedVideoContainer">
+                    <div class="video-placeholder" id="annotatedVideoPlaceholder">
+                        <div class="video-placeholder-icon">🔄</div>
+                        Проверка доступности...
+                    </div>
+                    <video class="video-player" id="annotatedVideoPlayer" controls preload="metadata" style="display: none;">
+                        Ваш браузер не поддерживает видео.
+                    </video>
+                </div>
+                <div class="video-info">
+                    <div class="video-filename" id="annotatedFilename" title="Загрузка...">
+                        Загрузка...
+                    </div>
+                    <div class="video-actions">
+                        <div class="video-status">
+                            <span class="status-dot" id="annotatedStatusDot"></span>
+                            <span id="annotatedStatusText">Проверка...</span>
+                        </div>
+                        <button class="btn-download" id="downloadAnnotatedBtn" onclick="downloadAnnotatedVideo()" disabled>
+                            <span>⬇️</span>
+                            Скачать
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Отчеты -->
+    <div class="reports-section">
+        <h2 class="section-title">
+            <span>📋</span>
+            Отчеты анализа
+        </h2>
+
+        <div class="report-tabs">
+            <button class="report-tab active" data-tab="text" onclick="switchReport('text')">
+                Текстовый отчет
+            </button>
+            <button class="report-tab" data-tab="graphic" onclick="switchReport('graphic')">
+                Графический отчет
+            </button>
+            <button class="report-tab" data-tab="data" onclick="switchReport('data')">
+                Данные анализа
+            </button>
+        </div>
+
+        <div class="report-content">
+            <div id="textReportContent" class="text-report">
+                Загрузка текстового отчета...
+            </div>
+            <div id="graphicReportContent" style="display: none;">
+                <div class="report-not-found" id="graphicReportPlaceholder">
+                    Загрузка графического отчета...
+                </div>
+            </div>
+            <div id="dataReportContent" class="text-report" style="display: none;">
+                <div class="report-not-found" id="dataReportPlaceholder">
+                    Загрузка данных анализа...
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px;">
+            <button class="btn-download" onclick="downloadTextReport()" id="downloadTextBtn" disabled>
+                <span>📄</span>
+                Скачать текстовый отчет
+            </button>
+            <button class="btn-download" onclick="downloadGraphicReport()" id="downloadGraphicBtn" disabled>
+                <span>📊</span>
+                Скачать графический отчет
+            </button>
+            <button class="btn-download" onclick="downloadData()" id="downloadDataBtn" disabled>
+                <span>📊</span>
+                Скачать данные (H5)
+            </button>
+        </div>
+    </div>
+
+    <!-- Действия -->
+    <div class="actions-section">
+        <h2 class="section-title">
+            <span>⚡</span>
+            Действия
+        </h2>
+        <div class="actions-grid">
+            <button class="action-button" onclick="goBack()">
+                <span class="action-icon">←</span>
+                Назад к результатам
+            </button>
+            <button class="action-button" onclick="calculateRation()" id="calculateRationBtn">
+                <span class="action-icon">🥕</span>
+                Рассчитать рацион
+            </button>
+            <button class="action-button" onclick="newAnalysis()">
+                <span class="action-icon">🔍</span>
+                Новый анализ
+            </button>
+            <button class="action-button delete" onclick="deleteAnalysis()" id="deleteBtn">
+                <span class="action-icon">🗑️</span>
+                Удалить анализ
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Индикатор загрузки -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================
+// ИСПРАВЛЕННЫЙ КОД С РАБОЧИМ ВИДЕО ПРЕДПРОСМОТРОМ
+// ============================================
+
+let currentAnalysisId = {{ analysis_id|default:"null" }};
+let analysisData = null;
+let videoPaths = {};
+
+// Вспомогательные функции
+function showToast(message, type = 'success') {
+    const oldToast = document.querySelector('.toast');
+    if (oldToast) oldToast.remove();
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    const icon = type === 'success' ? '✅' : '❌';
+    toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 3000);
+}
+
+function showLoading() {
+    document.getElementById('loadingOverlay').style.display = 'flex';
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+function updateVideoStatus(elementId, status, message) {
+    const statusDot = document.getElementById(`${elementId}StatusDot`);
+(venv) root@aislab56:/home/ais/shared/horseAI/frontend/templates/frontend# cd /home/ais/shared/horseAI/media/detector_results
+(venv) root@aislab56:/home/ais/shared/horseAI/media/detector_results# ls -la
+итого 76
+drwxr-xr-x 19 root root 4096 дек 24 11:32 .
+drwxr-xr-x 14 root root 4096 дек 24 11:32 ..
+drwxr-xr-x  2 root root 4096 дек 13 07:37 a53303b6
+drwxr-xr-x  2 root root 4096 дек 13 07:46 d2950995
+drwxr-xr-x  2 root root 4096 дек 13 07:42 e9d860d9
+drwxr-xr-x  2 root root 4096 дек 13 07:33 fb7d22b2
+drwxr-xr-x  2 root root 4096 дек 23 23:14 vid_36
+drwxr-xr-x  2 root root 4096 дек 23 23:33 vid_39
+drwxr-xr-x  2 root root 4096 дек 23 23:37 vid_40
+drwxr-xr-x  2 root root 4096 дек 23 23:45 vid_41
+drwxr-xr-x  2 root root 4096 дек 23 23:53 vid_42
+drwxr-xr-x  2 root root 4096 дек 23 23:57 vid_43
+drwxr-xr-x  2 root root 4096 дек 24 00:06 vid_44
+drwxr-xr-x  2 root root 4096 дек 24 09:25 vid_45
+drwxr-xr-x  2 root root 4096 дек 24 09:28 vid_46
+drwxr-xr-x  2 root root 4096 дек 24 09:31 vid_47
+drwxr-xr-x  2 root root 4096 дек 24 09:42 vid_48
+drwxr-xr-x  2 root root 4096 дек 24 10:17 vid_49
+drwxr-xr-x  3 root root 4096 дек 24 11:46 vid_50
+(venv) root@aislab56:/home/ais/shared/horseAI/media/detector_results# cd vid_50
+(venv) root@aislab56:/home/ais/shared/horseAI/media/detector_results/vid_50# ls -la
+итого 8496
+drwxr-xr-x  3 root root    4096 дек 24 11:46 .
+drwxr-xr-x 19 root root    4096 дек 24 11:32 ..
+drwxr-xr-x  2 root root    4096 дек 24 11:46 20251224_093208_dbfd2cae_IMG_3451
+-rw-r--r--  1 root root  438885 дек 24 11:46 20251224_093208_dbfd2cae_IMG_3    const statusText = document.getElementById(`${elementId}StatusText`);
+    
+    if (statusDot) {
+        statusDot.className = 'status-dot';
+        statusDot.classList.add(`status-${status}`);
+    }
+    
+    if (statusText) {
+        statusText.textContent = message;
+        
+        const colors = {
+            available: '#10b981',
+            warning: '#f59e0b',
+            error: '#ef4444',
+            info: '#3b82f6'
+        };
+        statusText.style.color = colors[status] || colors.info;
+    }
+}
+
+// ============================================
+// ОСНОВНАЯ ЗАГРУЗКА ДАННЫХ
+// ============================================
+
+async function loadAnalysisData() {
+    try {
+        showLoading();
+        
+        if (!currentAnalysisId || currentAnalysisId === "null") {
+            const path = window.location.pathname;
+            const match = path.match(/\/analysis\/(\d+)\//);
+            currentAnalysisId = match ? parseInt(match[1]) : null;
+        }
+
+        if (!currentAnalysisId) {
+            throw new Error('ID анализа не найден');
+        }
+
+        document.getElementById('analysisId').textContent = `#${currentAnalysisId}`;
+
+        // Загружаем данные анализа
+        const response = await fetch(`/api/analysis/${currentAnalysisId}/detail/`);
+        if (!response.ok) {
+            throw new Error(`HTTP error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Данные анализа:', data);
+        
+        analysisData = data.analysis || data;
+        
+        if (!analysisData) {
+            throw new Error('Нет данных анализа в ответе');
+        }
+
+        // Отображаем данные
+        renderAnalysisData();
+        
+        // Ищем файлы через API
+        await findFilesThroughAPI();
+        
+        // Настраиваем видео
+        await setupVideos();
+        
+        // Загружаем отчеты
+        await loadReports();
+
+    } catch (error) {
+        console.error('Ошибка загрузки:', error);
+        showToast(`Ошибка загрузки: ${error.message}`, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function renderAnalysisData() {
+    if (!analysisData) return;
+
+    const lamenessProb = analysisData.lameness_probability || analysisData.probability || 0;
+    const isLame = analysisData.lameness_detected || analysisData.is_lame || lamenessProb > 50;
+
+    const statusEl = document.getElementById('statusText');
+    statusEl.textContent = isLame ? 'Хромота обнаружена' : 'Здоровая походка';
+    statusEl.className = isLame ? 'status-badge lame' : 'status-badge healthy';
+
+    const dateEl = document.getElementById('analysisDate');
+    const date = analysisData.created_at || analysisData.analysis_date || analysisData.date;
+    dateEl.textContent = date ? new Date(date).toLocaleDateString('ru-RU') : 'Неизвестно';
+
+    const animalEl = document.getElementById('animalName');
+    animalEl.textContent = analysisData.animal_name || analysisData.animal?.name || 'Неизвестно';
+
+    const probEl = document.getElementById('lamenessProbability');
+    const probBar = document.getElementById('probabilityBar');
+    const probDesc = document.getElementById('probabilityDescription');
+
+    probEl.textContent = `${lamenessProb.toFixed(1)}%`;
+    probBar.style.width = `${Math.min(lamenessProb, 100)}%`;
+    probBar.className = lamenessProb > 50 ? 'progress-fill progress-lame' : 'progress-fill progress-healthy';
+
+    let description = 'Низкая вероятность хромоты';
+    if (lamenessProb > 70) description = 'Высокая вероятность хромоты';
+    else if (lamenessProb > 30) description = 'Средняя вероятность хромоты';
+    probDesc.textContent = description;
+
+    const confEl = document.getElementById('analysisConfidence');
+    const confDesc = document.getElementById('confidenceDescription');
+
+    const confidence = analysisData.lameness_confidence || analysisData.confidence || 0;
+    confEl.textContent = `${confidence.toFixed(1)}%`;
+
+    let confDescription = 'Высокая уверенность';
+    if (confidence < 40) confDescription = 'Низкая уверенность';
+    else if (confidence < 70) confDescription = 'Средняя уверенность';
+    confDesc.textContent = confDescription;
+}
+
+// ============================================
+// ПОИСК ФАЙЛОВ ЧЕРЕЗ API
+// ============================================
+
+async function findFilesThroughAPI() {
+    if (!currentAnalysisId) return;
+
+    try {
+        // Ищем через API endpoint
+        const response = await fetch(`/api/analysis/${currentAnalysisId}/files/`);
+        if (!response.ok) {
+            console.warn('API files endpoint не доступен');
+            return await findFilesManually();
+        }
+
+        const data = await response.json();
+        console.log('API files response:', data);
+
+        if (data.success && data.files) {
+            videoPaths = data.files;
+            console.log('Найденные файлы через API:', videoPaths);
+        } else {
+            await findFilesManually();
+        }
+    } catch (error) {
+        console.error('Ошибка поиска файлов через API:', error);
+        await findFilesManually();
+    }
+}
+
+async function findFilesManually() {
+    if (!analysisData) return;
+
+    const videoFilename = analysisData.video_filename || analysisData.video?.filename || '';
+    console.log('Ищем файлы вручную для:', videoFilename);
+
+    if (!videoFilename) {
+        console.warn('Нет имени файла для поиска');
+        return;
+    }
+
+    const baseName = videoFilename.replace(/\.[^/.]+$/, "");
+
+    const searchPaths = [
+        // Оригинальное видео
+        `/media/videos/${videoFilename}`,
+        `/media/uploads/${videoFilename}`,
+        analysisData.video_path,
+        `/media/${videoFilename}`,
+
+        // Размеченное видео
+        `/media/results/${baseName}_labeled.mp4`,
+        `/media/results/${baseName}_annotated.mp4`,
+        `/media/results/${baseName}_superanimal_quadruped_hrnet_w32_ssdlite__labeled_before_adapt.mp4`,
+        analysisData.annotated_video_path,
+        `/media/detector_results/${baseName}_labeled.mp4`,
+    ];
+
+    videoPaths = {};
+
+    // Проверяем каждый путь
+    for (const path of searchPaths) {
+        if (!path) continue;
+
+        try {
+            const response = await fetch(path, { method: 'HEAD' });
+            if (response.ok) {
+                const filename = path.split('/').pop();
+                if (path.includes('_labeled') || path.includes('_annotated')) {
+                    videoPaths.annotated = path;
+                    console.log(`✅ Найдено размеченное видео: ${filename}`);
+                } else if (path.includes('video') || path.includes('upload') || 
+                          path === `/media/${videoFilename}`) {
+                    videoPaths.original = path;
+                    console.log(`✅ Найдено оригинальное видео: ${filename}`);
+                }
+            }
+        } catch (error) {
+            continue;
+        }
+    }
+
+    console.log('Ручной поиск файлов завершен:', videoPaths);
+}
+

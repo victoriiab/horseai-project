@@ -1,0 +1,53 @@
+from django.urls import path
+from . import views
+from . import api_views
+from . import real_ml_views_final as ml_views
+from django.shortcuts import render  # ДОБАВИЛИ ИМПОРТ
+
+urlpatterns = [
+    # Основные страницы
+    path('', views.index, name='index'),
+    path('login/', views.custom_login, name='login'),
+    path('logout/', views.custom_logout, name='logout'),
+    path('register/', views.register, name='register'),
+    path('animals/', views.animals_list, name='animals'),
+    path('ration/', views.ration_calculation, name='ration'),
+    path('profile/', views.profile, name='profile'),
+    path('dashboard/', views.admin_dashboard, name='dashboard'),
+
+    # Загрузка видео и анализ
+    path('video-upload/', views.video_upload, name='video_upload'),
+    path('analysis/results/', views.analysis_results, name='analysis_results'),
+
+    # API endpoints из views.py
+    path('api/system-stats/', views.get_system_stats, name='system_stats'),
+
+    # API endpoints из api_views.py
+    path('api/animals/add/', api_views.api_add_animal, name='api_add_animal'),
+    path('api/animals/<int:animal_id>/update/', api_views.api_update_animal, name='api_update_animal'),
+    path('api/animals/<int:animal_id>/delete/', api_views.api_delete_animal, name='api_delete_animal'),
+    path('api/animals/user/', api_views.api_user_animals, name='api_user_animals'),
+    path('api/animals/<int:animal_id>/', api_views.api_animal_detail, name='api_animal_detail'),
+    path('api/calculate-ration/', api_views.api_calculate_ration, name='api_calculate_ration'),
+
+    # REAL ML endpoints
+    path('api/upload/real-ml-final/', ml_views.upload_video_real_ml_final, name='upload_video_real_ml_final'),
+    path('analysis/report/<int:video_id>/download/', ml_views.download_ml_report, name='download_ml_report'),
+    path('api/upload/horse-detector-test/', views.upload_video_horse_detector, name='upload_horse_detector_test'),
+    path('api/upload/test-adapter/', views.upload_video_with_adapter, name='upload_test_adapter'),
+    path('analysis/status/<int:video_id>/', views.analysis_status_page, name='analysis_status_page'),
+    path('api/analysis/status/<int:video_id>/', views.get_analysis_status_json, name='get_analysis_status_json'),
+
+    # Super Admin
+    path('super-admin/', views.super_admin_panel, name='super_admin'),
+
+    # Тестовая страница
+    path('test-upload/', views.test_upload_page, name='test_upload'),
+]
+
+# Административные страницы (добавляем в конец)
+urlpatterns += [
+    path('admin/users/', lambda request: render(request, 'frontend/admin_users.html'), name='admin_users'),
+    path('admin/animals/', lambda request: render(request, 'frontend/admin_animals.html'), name='admin_animals'),
+    path('admin/analyses/', lambda request: render(request, 'frontend/admin_analyses.html'), name='admin_analyses'),
+]

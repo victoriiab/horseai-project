@@ -1,0 +1,992 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Анализ походки - HorseAI{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Упрощенные стили */
+    .upload-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 30px 20px;
+    }
+
+    .upload-header {
+        margin-bottom: 40px;
+        text-align: center;
+    }
+
+    .upload-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .upload-subtitle {
+        color: var(--text-secondary);
+        font-size: 15px;
+        line-height: 1.5;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* Карточка */
+    .upload-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 20px;
+    }
+
+    /* Форма */
+    .form-group {
+        margin-bottom: 25px;
+    }
+
+    .form-label {
+        display: block;
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--bg-dark);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 14px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .form-select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+    }
+
+    .form-hint {
+        color: var(--text-tertiary);
+        font-size: 13px;
+        margin-top: 8px;
+        line-height: 1.4;
+    }
+
+    .form-hint a {
+        color: var(--accent);
+        text-decoration: none;
+    }
+
+    .form-hint a:hover {
+        text-decoration: underline;
+    }
+
+    /* Дропзона */
+    .dropzone {
+        border: 2px dashed var(--border);
+        border-radius: 12px;
+        padding: 40px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition);
+        background: transparent;
+    }
+
+    .dropzone:hover {
+        border-color: var(--accent);
+        background: rgba(217, 119, 6, 0.05);
+    }
+
+    .dropzone.dragover {
+        border-color: var(--accent);
+        background: rgba(217, 119, 6, 0.1);
+    }
+
+    .dropzone-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.8;
+    }
+
+    .dropzone-text {
+        color: var(--text-primary);
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .dropzone-hint {
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+
+    .file-info {
+        margin-top: 20px;
+        padding: 16px;
+        background: var(--bg-dark);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        text-align: left;
+    }
+
+    .file-name {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 4px;
+        word-break: break-all;
+    }
+
+    .file-size {
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+
+    /* Информация о модели */
+    .model-info {
+        background: var(--bg-dark);
+        border-left: 3px solid var(--accent);
+        padding: 16px;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
+
+    .model-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .model-details {
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .model-details ul {
+        padding-left: 20px;
+        margin: 8px 0;
+    }
+
+    .model-details li {
+        margin-bottom: 4px;
+    }
+
+    /* Кнопки */
+    .upload-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 30px;
+    }
+
+    .btn {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        flex: 1;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--accent), #b45309);
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+
+    .btn-secondary {
+        background: transparent;
+        color: var(--text-primary);
+        border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--accent);
+    }
+
+    /* Прогресс */
+    .progress-container {
+        margin-top: 30px;
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .progress-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .progress-percent {
+        color: var(--accent);
+        font-weight: 700;
+        font-size: 16px;
+    }
+
+    .progress-bar {
+        height: 6px;
+        background: var(--bg-dark);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+        border-radius: 3px;
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+
+    .progress-status {
+        color: var(--text-secondary);
+        font-size: 13px;
+        text-align: center;
+        min-height: 20px;
+    }
+
+    /* Шаги прогресса */
+    .progress-steps {
+        margin-top: 25px;
+        padding: 20px;
+        background: var(--bg-dark);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+    }
+
+    .progress-step {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+
+    .progress-step:last-child {
+        margin-bottom: 0;
+    }
+
+    .step-icon {
+        font-size: 16px;
+        min-width: 20px;
+    }
+
+    .step-text {
+        flex: 1;
+    }
+
+    .step-active {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    .step-done {
+        color: var(--accent);
+    }
+
+    /* Результат */
+    .result-container {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 30px;
+        margin-top: 20px;
+    }
+
+    .result-header {
+        text-align: center;
+        margin-bottom: 25px;
+    }
+
+    .result-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+    }
+
+    .result-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+    }
+
+    .result-subtitle {
+        color: var(--text-secondary);
+        font-size: 15px;
+        line-height: 1.5;
+    }
+
+    .result-details {
+        margin: 25px 0;
+        padding: 20px;
+        background: var(--bg-dark);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+    }
+
+    .result-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .result-item:last-child {
+        border-bottom: none;
+    }
+
+    .result-label {
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    .result-value {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 14px;
+        text-align: right;
+    }
+
+    .result-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 30px;
+    }
+
+    /* Уведомления */
+    .notification {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: none;
+        animation: slideIn 0.3s ease;
+        background: var(--bg-card);
+        border: 1px solid;
+        font-size: 14px;
+    }
+
+    .notification-success {
+        border-color: rgba(16, 185, 129, 0.3);
+        color: #34d399;
+    }
+
+    .notification-error {
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+    }
+
+    .notification-info {
+        border-color: rgba(59, 130, 246, 0.3);
+        color: #93c5fd;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .upload-container {
+            padding: 20px 16px;
+        }
+
+        .upload-card {
+            padding: 20px;
+        }
+
+        .upload-actions,
+        .result-actions {
+            flex-direction: column;
+        }
+
+        .dropzone {
+            padding: 30px 16px;
+        }
+
+        .model-info {
+            padding: 12px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .upload-title {
+            font-size: 24px;
+        }
+
+        .upload-subtitle {
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            font-size: 13px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <!-- Уведомление -->
+    <div id="notification" class="notification"></div>
+
+    <!-- Заголовок -->
+    <div class="upload-header">
+        <h1 class="upload-title">
+            <span>📹</span>
+            Анализ походки
+        </h1>
+        <p class="upload-subtitle">
+            Загрузите видео лошади для автоматического анализа хромоты.
+            Система использует DeepLabCut и ML модель для определения проблем с походкой.
+        </p>
+    </div>
+
+    <!-- Основная форма -->
+    <div id="uploadForm">
+        <div class="upload-card">
+            <!-- Выбор лошади -->
+            <div class="form-group">
+                <label class="form-label">
+                    <span>🐎</span>
+                    Лошадь для анализа
+                </label>
+                <select id="animalSelect" class="form-select" required>
+                    <option value="">Выберите лошадь</option>
+                    {% for animal in animals %}
+                    <option value="{{ animal.animal_id }}">{{ animal.name|default:"Без имени" }}</option>
+                    {% empty %}
+                    <option value="" disabled>Нет доступных лошадей</option>
+                    {% endfor %}
+                </select>
+                {% if not animals %}
+                <div class="form-hint">
+                    ⚠️ У вас нет лошадей. Сначала добавьте лошадь в разделе
+                    <a href="/animals/">Мои лошади</a>.
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Загрузка видео -->
+            <div class="form-group">
+                <label class="form-label">
+                    <span>🎬</span>
+                    Видео для анализа
+                </label>
+                <div id="dropzone" class="dropzone">
+                    <div class="dropzone-icon">📁</div>
+                    <div class="dropzone-text">Перетащите видео файл</div>
+                    <div class="dropzone-hint">или нажмите для выбора (MP4, AVI, MOV)</div>
+
+                    <input type="file" id="videoFile" accept="video/*" style="display: none;">
+
+                    <div id="fileInfo" class="file-info" style="display: none;">
+                        <div class="file-name" id="fileName"></div>
+                        <div class="file-size" id="fileSize"></div>
+                    </div>
+                </div>
+                <div class="form-hint">
+                    • Поддерживаемые форматы: MP4, AVI, MOV, MKV<br>
+                    • Максимальный размер: 500MB<br>
+                    • Рекомендуется: съемка сбоку, хорошее освещение
+                </div>
+            </div>
+
+            <!-- Информация о модели -->
+            <div class="model-info">
+                <div class="model-title">
+                    <span>🤖</span>
+                    Используемая модель
+                </div>
+                <div class="model-details">
+                    <ul>
+                        <li><strong>HorseLamenessDetector</strong> - гибридная модель для анализа хромоты</li>
+                        <li>DeepLabCut SuperAnimal + пользовательская ML модель</li>
+                        <li>Время анализа: 2-5 минут</li>
+                        <li>Точность: ~85%</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Кнопки -->
+            <div class="upload-actions">
+                <button class="btn btn-secondary" onclick="window.location.href='/'">
+                    <span>←</span>
+                    Назад
+                </button>
+                <button id="uploadBtn" class="btn btn-primary" onclick="startAnalysis()" disabled>
+                    <span>🚀</span>
+                    Начать анализ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Прогресс анализа -->
+    <div id="progressContainer" style="display: none;">
+        <div class="upload-card">
+            <div class="progress-header">
+                <div class="progress-title">
+                    <span id="progressIcon">⏳</span>
+                    Анализ походки
+                </div>
+                <div class="progress-percent" id="progressPercent">0%</div>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div class="progress-status" id="progressStatus">
+                Подготовка к анализу...
+            </div>
+
+            <!-- Шаги прогресса -->
+            <div class="progress-steps">
+                <div id="step1" class="progress-step step-active">
+                    <span class="step-icon">1</span>
+                    <span class="step-text">Загрузка видео</span>
+                </div>
+                <div id="step2" class="progress-step">
+                    <span class="step-icon">2</span>
+                    <span class="step-text">Обработка видео</span>
+                </div>
+                <div id="step3" class="progress-step">
+                    <span class="step-icon">3</span>
+                    <span class="step-text">DeepLabCut анализ</span>
+                </div>
+                <div id="step4" class="progress-step">
+                    <span class="step-icon">4</span>
+                    <span class="step-text">ML анализ хромоты</span>
+                </div>
+                <div id="step5" class="progress-step">
+                    <span class="step-icon">5</span>
+                    <span class="step-text">Сохранение результатов</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Результат -->
+    <div id="resultContainer" class="result-container" style="display: none;">
+        <div class="result-header">
+            <h2 class="result-title" id="resultTitle">Анализ завершен</h2>
+            <p class="result-subtitle" id="resultSubtitle"></p>
+        </div>
+
+        <div class="result-details" id="resultDetails">
+            <!-- Детали результата -->
+        </div>
+
+        <div class="result-actions">
+            <button class="btn btn-secondary" onclick="resetForm()">
+                <span>🔄</span>
+                Новый анализ
+            </button>
+            <button class="btn btn-primary" onclick="viewAnalysis()">
+                <span>📊</span>
+                Посмотреть анализ
+            </button>
+            <button class="btn btn-secondary" onclick="viewResults()">
+                <span>📋</span>
+                Все анализы
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Глобальные переменные
+let selectedFile = null;
+let currentVideoId = null;
+let statusCheckInterval = null;
+
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification notification-${type}`;
+    notification.style.display = 'block';
+
+    if (type !== 'error') {
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 4000);
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function getCSRFToken() {
+    const token = document.querySelector('[name=csrfmiddlewaretoken]');
+    return token ? token.value : '';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('videoFile');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const animalSelect = document.getElementById('animalSelect');
+
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) handleFileSelect(e.target.files[0]);
+        });
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) handleFileSelect(e.dataTransfer.files[0]);
+        });
+
+        function checkUploadButton() {
+            const canUpload = animalSelect.value && selectedFile;
+            uploadBtn.disabled = !canUpload;
+        }
+
+        animalSelect.addEventListener('change', checkUploadButton);
+
+    } catch (error) {
+        console.error('Ошибка инициализации:', error);
+        showNotification('Ошибка загрузки формы', 'error');
+    }
+});
+
+function handleFileSelect(file) {
+    try {
+        const validExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.webm'];
+        const extension = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (!validExtensions.includes(extension)) {
+            showNotification('Выберите видео файл (MP4, AVI, MOV, MKV, WebM)', 'error');
+            return;
+        }
+
+        if (file.size > 500 * 1024 * 1024) {
+            showNotification('Файл слишком большой. Макс: 500MB', 'error');
+            return;
+        }
+
+        selectedFile = file;
+
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = formatFileSize(file.size);
+        document.getElementById('fileInfo').style.display = 'block';
+
+        const uploadBtn = document.getElementById('uploadBtn');
+        uploadBtn.disabled = !document.getElementById('animalSelect').value;
+
+        showNotification(`Выбран файл: ${file.name}`, 'success');
+
+    } catch (error) {
+        showNotification('Ошибка обработки файла', 'error');
+    }
+}
+
+async function startAnalysis() {
+    try {
+        const animalSelect = document.getElementById('animalSelect');
+        const animalId = animalSelect.value;
+
+        if (!animalId) {
+            showNotification('Выберите лошадь для анализа', 'error');
+            return;
+        }
+
+        if (!selectedFile) {
+            showNotification('Выберите видео файл', 'error');
+            return;
+        }
+
+        // Показать прогресс
+        document.getElementById('uploadForm').style.display = 'none';
+        document.getElementById('progressContainer').style.display = 'block';
+        updateProgress(10, 'Начинаем загрузку...');
+
+        // Обновить шаги
+        updateStep(1, true, false);
+        updateStep(2, false, false);
+        updateStep(3, false, false);
+        updateStep(4, false, false);
+        updateStep(5, false, false);
+
+        const formData = new FormData();
+        formData.append('animal_id', animalId);
+        formData.append('video_file', selectedFile);
+
+        // Отправка на сервер
+        updateProgress(20, 'Отправка файла...');
+        const response = await fetch('/api/upload/with-adapter/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            currentVideoId = data.video_id;
+            updateStep(1, false, true);
+            updateProgress(40, 'Видео загружено. Обработка...');
+            
+            showNotification('Видео успешно загружено. Запуск ML анализа...', 'success');
+            
+            // Начать отслеживание статуса
+            startStatusCheck(data.video_id);
+        } else {
+            throw new Error(data.error || 'Ошибка загрузки');
+        }
+
+    } catch (error) {
+        console.error('Ошибка анализа:', error);
+        showNotification('Ошибка: ' + error.message, 'error');
+        resetToForm();
+    }
+}
+
+// Обновление прогресса
+function updateProgress(percent, message) {
+    const percentEl = document.getElementById('progressPercent');
+    const fillEl = document.getElementById('progressFill');
+    const statusEl = document.getElementById('progressStatus');
+    const iconEl = document.getElementById('progressIcon');
+
+    percentEl.textContent = percent + '%';
+    fillEl.style.width = percent + '%';
+    statusEl.textContent = message;
+
+    if (percent < 30) iconEl.textContent = '⏳';
+    else if (percent < 70) iconEl.textContent = '🔍';
+    else if (percent < 100) iconEl.textContent = '📊';
+    else iconEl.textContent = '✅';
+}
+
+// Обновление шага прогресса
+function updateStep(stepNumber, active = false, completed = false) {
+    const stepEl = document.getElementById('step' + stepNumber);
+    if (!stepEl) return;
+
+    if (completed) {
+        stepEl.classList.add('step-done');
+        stepEl.classList.remove('step-active');
+        stepEl.querySelector('.step-icon').textContent = '✓';
+    } else if (active) {
+        stepEl.classList.add('step-active');
+        stepEl.classList.remove('step-done');
+    } else {
+        stepEl.classList.remove('step-active', 'step-done');
+    }
+}
+
+// Отслеживание статуса
+async function startStatusCheck(videoId) {
+    updateStep(2, true, false);
+    updateProgress(50, 'Обработка видео...');
+
+    statusCheckInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/analysis/status/${videoId}/json/`);
+            const data = await response.json();
+
+            if (data.status === 'completed') {
+                clearInterval(statusCheckInterval);
+                updateStep(5, false, true);
+                updateProgress(100, 'Анализ завершен!');
+                
+                setTimeout(() => {
+                    showAnalysisResult(data);
+                }, 1000);
+
+            } else if (data.status === 'processing' || data.status === 'processing_ml') {
+                const progress = data.progress || 0;
+                const actualProgress = 50 + (progress * 0.4);
+                
+                if (actualProgress > 60) {
+                    updateStep(2, false, true);
+                    updateStep(3, true, false);
+                    updateProgress(actualProgress, 'DeepLabCut анализ...');
+                } else if (actualProgress > 80) {
+                    updateStep(3, false, true);
+                    updateStep(4, true, false);
+                    updateProgress(actualProgress, 'ML анализ хромоты...');
+                } else {
+                    updateProgress(actualProgress, data.message || 'Обработка...');
+                }
+
+            } else if (data.status === 'failed') {
+                clearInterval(statusCheckInterval);
+                showNotification('Ошибка анализа: ' + (data.error || 'Неизвестная ошибка'), 'error');
+                resetToForm();
+            }
+        } catch (error) {
+            console.warn('Ошибка проверки статуса:', error);
+        }
+    }, 3000);
+}
+
+
+// Показать результат анализа
+function showAnalysisResult(data) {
+    document.getElementById('progressContainer').style.display = 'none';
+    document.getElementById('resultContainer').style.display = 'block';
+
+    const isLame = data.is_lame || false;
+    const probability = data.lameness_probability || 0;
+    const diagnosis = data.diagnosis || 'Анализ выполнен';
+    const animalName = data.animal_name || 'Неизвестно';
+
+    const resultIcon = document.getElementById('resultIcon');
+    const resultTitle = document.getElementById('resultTitle');
+
+    if (isLame) {
+        resultIcon.textContent = '⚠️';
+        resultTitle.textContent = 'Хромота обнаружена';
+        resultTitle.style.color = 'var(--accent)';
+    } else {
+        resultIcon.textContent = '✅';
+        resultTitle.textContent = 'Хромота не обнаружена';
+        resultTitle.style.color = 'var(--success)';
+    }
+
+    document.getElementById('resultSubtitle').textContent = `${animalName} | ${diagnosis}`;
+
+    const details = `
+        <div class="result-item">
+            <span class="result-label">Результат:</span>
+            <span class="result-value" style="color: ${isLame ? 'var(--accent)' : 'var(--success)'}">
+                ${isLame ? 'Хромота обнаружена' : 'Норма'}
+            </span>
+        </div>
+        <div class="result-item">
+            <span class="result-label">Вероятность:</span>
+            <span class="result-value">${probability.toFixed(1)}%</span>
+        </div>
+        <div class="result-item">
+            <span class="result-label">Лошадь:</span>
+            <span class="result-value">${animalName}</span>
+        </div>
+        <div class="result-item">
+            <span class="result-label">Video ID:</span>
+            <span class="result-value">${currentVideoId || 'N/A'}</span>
+        </div>
+        <div class="result-item">
+            <span class="result-label">Рекомендация:</span>
+            <span class="result-value">${isLame ? 'Требуется консультация ветеринара' : 'Продолжайте наблюдение'}</span>
+        </div>
+    `;
+
+    document.getElementById('resultDetails').innerHTML = details;
+    showNotification('ML анализ успешно завершен!', 'success');
+}
+
+// Сброс формы
+function resetForm() {
+    selectedFile = null;
+    currentVideoId = null;
+
+    if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+        statusCheckInterval = null;
+    }
+
+    document.getElementById('uploadForm').style.display = 'block';
+    document.getElementById('progressContainer').style.display = 'none';
+    document.getElementById('resultContainer').style.display = 'none';
+
+    document.getElementById('animalSelect').value = '';
+    document.getElementById('videoFile').value = '';
+    document.getElementById('fileInfo').style.display = 'none';
+    document.getElementById('uploadBtn').disabled = true;
+    document.getElementById('notification').style.display = 'none';
+}
+
+function resetToForm() {
+    document.getElementById('uploadForm').style.display = 'block';
+    document.getElementById('progressContainer').style.display = 'none';
+    document.getElementById('resultContainer').style.display = 'none';
+}
+
+// Навигация
+function viewAnalysis() {
+    if (currentVideoId) {
+        window.location.href = `/analysis/status/${currentVideoId}/`;
+    } else {
+        showNotification('Сначала выполните анализ', 'error');
+    }
+}
+
+function viewResults() {
+    window.location.href = '/analysis/results/';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,942 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Мои лошади - HorseAI{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Основные стили страницы */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 40px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid var(--accent-light);
+    }
+
+    .page-title {
+        font-size: 32px;
+        font-weight: 800;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .page-title::before {
+        content: '🐎';
+        font-size: 36px;
+    }
+
+    .btn-primary {
+        padding: 12px 28px;
+        background: linear-gradient(135deg, var(--accent), var(--earth));
+        color: white;
+        border: none;
+        border-radius: var(--radius-lg);
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg), var(--glow);
+        background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+    }
+
+    /* Сетка животных */
+    .animals-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 30px;
+        margin-bottom: 50px;
+    }
+
+    /* Карточка животного */
+    .animal-card {
+        background: linear-gradient(145deg, var(--bg-card), var(--bg-hover));
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        padding: 28px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .animal-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--accent), var(--earth));
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .animal-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-8px);
+        box-shadow: var(--shadow-xl), var(--glow);
+    }
+
+    .animal-card:hover::before {
+        opacity: 1;
+    }
+
+    .animal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .animal-name {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+        line-height: 1.3;
+    }
+
+    .animal-badge {
+        padding: 6px 14px;
+        background: linear-gradient(135deg, var(--accent-light), var(--accent));
+        color: white;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    /* Детали животного */
+    .animal-details {
+        margin-top: 24px;
+    }
+
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .detail-item:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .detail-value {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 15px;
+    }
+
+    /* Действия с животным */
+    .animal-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 28px;
+    }
+
+    .btn-action {
+        flex: 1;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--bg-hover);
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-action:hover {
+        border-color: var(--accent);
+        background: var(--bg-card);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-edit:hover {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.2));
+        border-color: #3b82f6;
+        color: #60a5fa;
+    }
+
+    .btn-delete:hover {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.2));
+        border-color: #ef4444;
+        color: #fca5a5;
+    }
+
+    /* Статистика */
+    .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, var(--bg-card), var(--bg-hover));
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        padding: 24px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .stat-number {
+        font-size: 40px;
+        font-weight: 800;
+        color: var(--accent-light);
+        display: block;
+        margin-bottom: 8px;
+        line-height: 1;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* Пустое состояние */
+    .empty-state {
+        text-align: center;
+        padding: 80px 40px;
+        background: linear-gradient(145deg, var(--bg-card), var(--bg-dark));
+        border-radius: var(--radius-2xl);
+        border: 3px dashed var(--border);
+        margin: 40px 0;
+    }
+
+    .empty-icon {
+        font-size: 80px;
+        margin-bottom: 24px;
+        opacity: 0.3;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    .empty-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+    }
+
+    .empty-description {
+        color: var(--text-tertiary);
+        font-size: 16px;
+        max-width: 400px;
+        margin: 0 auto 32px;
+        line-height: 1.6;
+    }
+
+    /* Модальное окно */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(5px);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .modal-content {
+        background: linear-gradient(145deg, var(--bg-card), var(--bg-dark));
+        border-radius: var(--radius-2xl);
+        padding: 40px;
+        width: 90%;
+        max-width: 500px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-2xl), 0 0 50px rgba(120, 53, 15, 0.3);
+        animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes slideUp {
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+    }
+
+    .modal-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .modal-close {
+        background: var(--bg-hover);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--text-secondary);
+        font-size: 24px;
+        width: 40px;
+        height: 40px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+
+    .modal-close:hover {
+        background: var(--border);
+        color: var(--text-primary);
+        transform: rotate(90deg);
+    }
+
+    /* Форма */
+    .form-group {
+        margin-bottom: 24px;
+    }
+
+    .form-label {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .form-label::after {
+        content: '*';
+        color: var(--accent);
+        font-size: 18px;
+    }
+
+    .form-input, .form-select {
+        width: 100%;
+        padding: 14px 18px;
+        background: var(--bg-dark);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        color: var(--text-primary);
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+
+    .form-input:focus, .form-select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 16px;
+        margin-top: 40px;
+    }
+
+    .modal-btn {
+        flex: 1;
+        padding: 16px;
+        border: none;
+        border-radius: var(--radius-lg);
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .modal-btn-primary {
+        background: linear-gradient(135deg, var(--accent), var(--earth));
+        color: white;
+        box-shadow: var(--shadow-md);
+    }
+
+    .modal-btn-primary:hover {
+        background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg), var(--glow);
+    }
+
+    .modal-btn-secondary {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+        border: 1px solid var(--border);
+    }
+
+    .modal-btn-secondary:hover {
+        background: var(--border);
+        border-color: var(--accent);
+        transform: translateY(-2px);
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 20px;
+        }
+
+        .animals-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .animal-actions {
+            flex-direction: column;
+        }
+
+        .modal-content {
+            padding: 30px 20px;
+        }
+
+        .modal-actions {
+            flex-direction: column;
+        }
+
+        .stats-bar {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">🐴 Мои лошади</h1>
+    <button class="btn-primary" onclick="openAddModal()">
+        <span>➕</span>
+        Добавить лошадь
+    </button>
+</div>
+
+<!-- Статистика -->
+{% if animals %}
+<div class="stats-bar">
+    <div class="stat-card">
+        <span class="stat-number" id="total-count">{{ animals|length }}</span>
+        <span class="stat-label">Всего лошадей</span>
+    </div>
+    
+    <div class="stat-card">
+        <span class="stat-number" id="mares-count">0</span>
+        <span class="stat-label">Кобыл</span>
+    </div>
+    
+    <div class="stat-card">
+        <span class="stat-number" id="stallions-count">0</span>
+        <span class="stat-label">Жеребцов</span>
+    </div>
+    
+    <div class="stat-card">
+        <span class="stat-number" id="average-age">0</span>
+        <span class="stat-label">Средний возраст</span>
+    </div>
+</div>
+{% endif %}
+
+<!-- Список животных -->
+{% if animals %}
+    <div class="animals-grid">
+        {% for animal in animals %}
+        <div class="animal-card" id="animal-{{ animal.animal_id }}">
+            <div class="animal-header">
+                <h3 class="animal-name">{{ animal.name|default:"Без имени" }}</h3>
+                
+                {% if animal.sex %}
+                    {% if animal.sex == 'F' or animal.sex == 'mare' %}
+                        <span class="animal-badge" data-sex="mare">♀️ Кобыла</span>
+                    {% elif animal.sex == 'M' or animal.sex == 'stallion' %}
+                        <span class="animal-badge" data-sex="stallion">♂️ Жеребец</span>
+                    {% elif animal.sex == 'G' or animal.sex == 'gelding' %}
+                        <span class="animal-badge" data-sex="gelding">🐴 Мерин</span>
+                    {% else %}
+                        <span class="animal-badge" data-sex="{{ animal.sex }}">{{ animal.sex|title }}</span>
+                    {% endif %}
+                {% endif %}
+            </div>
+
+            <div class="animal-details">
+                {% if animal.age %}
+                <div class="detail-item" data-type="age">
+                    <span class="detail-label">📅 Возраст</span>
+                    <span class="detail-value">{{ animal.age }} лет</span>
+                </div>
+                {% endif %}
+
+                {% if animal.estimated_weight %}
+                <div class="detail-item">
+                    <span class="detail-label">⚖️ Вес</span>
+                    <span class="detail-value">{{ animal.estimated_weight|floatformat:1 }} кг</span>
+                </div>
+                {% endif %}
+
+                <div class="detail-item">
+                    <span class="detail-label">📊 ID</span>
+                    <span class="detail-value">#{{ animal.animal_id }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label">📅 Добавлен</span>
+                    <span class="detail-value">
+                        {% if animal.created_at %}
+                            {{ animal.created_at|date:"d.m.Y" }}
+                        {% else %}
+                            Не указана
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="animal-actions">
+                <button class="btn-action btn-edit" onclick="editAnimal('{{ animal.animal_id }}')">
+                    <span>✏️</span> Редактировать
+                </button>
+                <button class="btn-action btn-delete" onclick="deleteAnimal('{{ animal.animal_id }}', '{{ animal.name|escapejs }}')">
+                    <span>🗑️</span> Удалить
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <!-- Пустое состояние -->
+    <div class="empty-state">
+        <div class="empty-icon">🐎</div>
+        <h3 class="empty-title">У вас пока нет лошадей</h3>
+        <p class="empty-description">
+            Добавьте свою первую лошадь, чтобы начать использовать все возможности системы.
+            Вы сможете загружать видео для анализа, получать рекомендации по здоровью 
+            и составлять оптимальные рационы кормления.
+        </p>
+        <button class="btn-primary" onclick="openAddModal()">
+            <span>➕</span>
+            Добавить первую лошадь
+        </button>
+    </div>
+{% endif %}
+
+<!-- Модальное окно для добавления/редактирования -->
+<div id="animalModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">
+                <span>🐴</span>
+                <span id="modalTitleText">Добавить лошадь</span>
+            </h2>
+            <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+
+        <form id="animalForm" onsubmit="saveAnimal(event)">
+            {% csrf_token %}
+            <input type="hidden" id="animalId" name="animal_id">
+
+            <div class="form-group">
+                <label class="form-label">Имя лошади</label>
+                <input type="text" id="animalName" name="name" class="form-input" 
+                       placeholder="Введите имя лошади" required
+                       maxlength="50" autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Пол</label>
+                <select id="animalSex" name="sex" class="form-select">
+                    <option value="">Выберите пол</option>
+                    <option value="F">♀️ Кобыла</option>
+                    <option value="M">♂️ Жеребец</option>
+                    <option value="G">🐴 Мерин</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Возраст (лет)</label>
+                <input type="number" id="animalAge" name="age" class="form-input" 
+                       placeholder="Укажите возраст" min="0" max="40" step="1">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Вес (кг)</label>
+                <input type="number" id="animalWeight" name="weight" class="form-input" 
+                       placeholder="Укажите вес" min="50" max="1200" step="0.1">
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="modal-btn modal-btn-secondary" onclick="closeModal()">
+                    Отмена
+                </button>
+                <button type="submit" class="modal-btn modal-btn-primary" id="submitBtn">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Подключаем модуль статистики -->
+<script src="/static/js/animal_statistics.js"></script>
+
+<script>
+// Глобальные переменные
+let isLoading = false;
+
+// Вспомогательные функции
+function getCSRFToken() {
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    return csrfInput ? csrfInput.value : '';
+}
+
+function showToast(message, type = 'success') {
+    // Удаляем старые уведомления
+    const oldToast = document.querySelector('.toast-notification');
+    if (oldToast) oldToast.remove();
+    
+    // Создаем новое уведомление
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 16px 24px;
+        background: ${type === 'success' ? '#10b981' : '#ef4444'};
+        color: white;
+        border-radius: 12px;
+        font-weight: 600;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        z-index: 9999;
+        animation: slideInRight 0.3s ease, fadeOut 0.3s ease 3s forwards;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    `;
+    
+    toast.innerHTML = `
+        <span>${type === 'success' ? '✅' : '❌'}</span>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Автоматическое удаление
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 3000);
+}
+
+// Добавляем CSS анимации для уведомлений
+if (!document.getElementById('toast-styles')) {
+    const style = document.createElement('style');
+    style.id = 'toast-styles';
+    style.textContent = `
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Функции модального окна
+function openAddModal() {
+    document.getElementById('modalTitleText').textContent = 'Добавить лошадь';
+    document.getElementById('animalId').value = '';
+    document.getElementById('animalName').value = '';
+    document.getElementById('animalSex').value = '';
+    document.getElementById('animalAge').value = '';
+    document.getElementById('animalWeight').value = '';
+    document.getElementById('submitBtn').textContent = 'Добавить';
+    
+    document.getElementById('animalModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('animalName').focus(), 100);
+}
+
+function closeModal() {
+    document.getElementById('animalModal').style.display = 'none';
+}
+
+// Загрузка животного для редактирования
+async function editAnimal(animalId) {
+    if (isLoading) return;
+    
+    try {
+        isLoading = true;
+        const submitBtn = document.getElementById('submitBtn');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Загрузка...';
+        submitBtn.disabled = true;
+        
+        console.log(`Загрузка животного ID: ${animalId}`);
+        const response = await fetch(`/api/simple-v2/animals/${animalId}/`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Данные животного:', data);
+        
+        if (data.success && data.animal) {
+            const animal = data.animal;
+            
+            document.getElementById('modalTitleText').textContent = 'Редактировать лошадь';
+            document.getElementById('animalId').value = animal.animal_id;
+            document.getElementById('animalName').value = animal.name || '';
+            document.getElementById('animalSex').value = animal.sex || '';
+            document.getElementById('animalAge').value = animal.age || '';
+            document.getElementById('animalWeight').value = animal.estimated_weight || '';
+            document.getElementById('submitBtn').textContent = 'Сохранить изменения';
+            
+            document.getElementById('animalModal').style.display = 'flex';
+            setTimeout(() => document.getElementById('animalName').focus(), 100);
+        } else {
+            showToast(data.error || 'Ошибка загрузки данных', 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка при редактировании:', error);
+        showToast('Ошибка сети при загрузке данных', 'error');
+    } finally {
+        isLoading = false;
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.textContent = document.getElementById('animalId').value ? 'Сохранить изменения' : 'Добавить';
+        submitBtn.disabled = false;
+    }
+}
+
+// Удаление животного
+async function deleteAnimal(animalId, animalName) {
+    if (!confirm(`Вы уверены, что хотите удалить лошадь "${animalName}"?\n\nЭто действие нельзя отменить.`)) {
+        return;
+    }
+    
+    try {
+        console.log(`Удаление животного ID: ${animalId}`);
+        const response = await fetch(`/api/simple-v2/animals/${animalId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
+        const data = await response.json();
+        console.log('Результат удаления:', data);
+        
+        if (data.success) {
+            showToast('Лошадь успешно удалена', 'success');
+            
+            // Плавное удаление карточки
+            const card = document.getElementById(`animal-${animalId}`);
+            if (card) {
+                card.style.transition = 'all 0.3s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    if (card.parentNode) {
+                        card.parentNode.removeChild(card);
+                        
+                        // Обновляем общее количество
+                        const totalElement = document.getElementById('total-count');
+                        if (totalElement) {
+                            const currentTotal = parseInt(totalElement.textContent) || 0;
+                            totalElement.textContent = Math.max(0, currentTotal - 1);
+                        }
+                        
+                        // Пересчитываем статистику
+                        if (typeof calculateAnimalStatistics === 'function') {
+                            calculateAnimalStatistics();
+                        }
+                        
+                        // Если животных не осталось, перезагружаем страницу
+                        const grid = document.querySelector('.animals-grid');
+                        if (grid && grid.children.length === 0) {
+                            setTimeout(() => location.reload(), 1000);
+                        }
+                    }
+                }, 300);
+            } else {
+                location.reload();
+            }
+        } else {
+            showToast(data.error || 'Ошибка при удалении', 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка при удалении:', error);
+        showToast('Ошибка сети при удалении', 'error');
+    }
+}
+
+// Сохранение животного
+async function saveAnimal(event) {
+    event.preventDefault();
+    
+    if (isLoading) return;
+    
+    const animalId = document.getElementById('animalId').value;
+    const name = document.getElementById('animalName').value.trim();
+    
+    if (!name) {
+        showToast('Введите имя лошади', 'error');
+        return;
+    }
+    
+    if (name.length < 2) {
+        showToast('Имя должно содержать минимум 2 символа', 'error');
+        return;
+    }
+    
+    const data = {
+        name: name,
+        sex: document.getElementById('animalSex').value || null,
+        age: document.getElementById('animalAge').value ? parseInt(document.getElementById('animalAge').value) : null,
+        estimated_weight: document.getElementById('animalWeight').value ? parseFloat(document.getElementById('animalWeight').value) : null
+    };
+    
+    console.log('Сохранение животного:', data, 'ID:', animalId);
+    
+    try {
+        isLoading = true;
+        const submitBtn = document.getElementById('submitBtn');
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Сохранение...';
+        submitBtn.disabled = true;
+        
+        let response;
+        let url;
+        
+        if (animalId) {
+            // Обновление существующего
+            url = `/api/simple-v2/animals/${animalId}/update/`;
+            response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify(data)
+            });
+        } else {
+            // Создание нового
+            url = `/api/simple-v2/animals/add/`;
+            response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify(data)
+            });
+        }
+        
+        const result = await response.json();
+        console.log('Результат сохранения:', result);
+        
+        if (result.success) {
+            showToast(result.message || 'Лошадь успешно сохранена', 'success');
+            closeModal();
+            
+            // Задержка перед обновлением для визуального эффекта
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showToast(result.error || 'Ошибка при сохранении', 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка при сохранении:', error);
+        showToast('Ошибка сети при сохранении', 'error');
+    } finally {
+        isLoading = false;
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.textContent = document.getElementById('animalId').value ? 'Сохранить изменения' : 'Добавить';
+        submitBtn.disabled = false;
+    }
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', function() {
+    // Закрытие модального окна при клике на фон
+    document.getElementById('animalModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal();
+        }
+    });
+    
+    // Закрытие по Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('animalModal').style.display === 'flex') {
+            closeModal();
+        }
+    });
+    
+    // Валидация формы
+    document.getElementById('animalForm').addEventListener('submit', saveAnimal);
+    
+    console.log('✅ Animals page initialized');
+});
+</script>
+{% endblock %}

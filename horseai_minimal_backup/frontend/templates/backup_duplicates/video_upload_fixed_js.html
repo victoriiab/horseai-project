@@ -1,0 +1,171 @@
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Страница загрузки видео загружена');
+    
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('videoFile');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (!form) {
+        console.error('Форма не найдена!');
+        return;
+    }
+    
+    // Получаем CSRF токен
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    const csrftoken = getCookie('csrftoken');
+    console.log('CSRF токен:', csrftoken ? 'есть' : 'отсутствует');
+    
+    // Обработка формы
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        console.log('Отправка формы...');
+        
+        // Проверка животного
+        const animalSelect = document.getElementById('animalSelect');
+        if (!animalSelect.value) {
+            alert('❌ Пожалуйста, выберите животное');
+            return;
+        }
+        
+        // Проверка файла
+        if (!fileInput.files.length) {
+            alert('❌ Пожалуйста, выберите видеофайл');
+            return;
+        }
+        
+        // Блокируем кнопку
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '⏳ Загрузка...';
+        
+        // Показываем уведомление
+        const progressDiv = document.getElementById('progressSection');
+        if (progressDiv) {
+            progressDiv.style.display = 'block';
+            progressDiv.innerHTML = '<p style="color: #4CAF50;">⏳ Загрузка видео...</p>';
+        }
+        
+        try {
+            // Создаем FormData
+            const formData = new FormData(this);
+            
+            // Отправляем запрос с CSRF токеном
+            const response = await fetch('/api/upload/simple/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken
+                },
+                credentials: 'same-origin'  // Важно для отправки cookies
+            });
+            
+            console.log('Статус ответа:', response.status);
+            
+            if (response.status === 403) {
+                throw new Error('Доступ запрещен. Возможно, нужно войти в систему.');
+            }
+            
+            const data = await response.json();
+            console.log('Ответ сервера:', data);
+            
+            if (data.success) {
+                // Успех
+                if (progressDiv) {
+                    progressDiv.innerHTML = '<p style="color: #4CAF50;">✅ Видео успешно загружено!</p>';
+                }
+                
+                alert('✅ ' + data.message + '\nID видео: ' + data.video_id);
+                
+                // Перенаправляем на страницу результатов
+                setTimeout(() => {
+                    window.location.href = '/analysis/results/';
+                }, 1500);
+                
+            } else {
+                throw new Error(data.error || 'Ошибка загрузки');
+            }
+            
+        } catch (error) {
+            console.error('Ошибка:', error);
+            
+            // Показываем подробное сообщение об ошибке
+            let errorMessage = error.message;
+            
+            if (errorMessage.includes('403') || errorMessage.includes('Доступ запрещен')) {
+                errorMessage = 'Требуется авторизация. Пожалуйста, войдите в систему.';
+                setTimeout(() => {
+                    window.location.href = '/login/';
+                }, 2000);
+            }
+            
+            alert('❌ Ошибка: ' + errorMessage);
+            
+            // Восстанавливаем кнопку
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '🚀 Запустить анализ видео';
+            
+            if (progressDiv) {
+                progressDiv.style.display = 'none';
+            }
+        }
+    });
+    
+    // Простой Drag & Drop
+    const dropZone = document.getElementById('dropZone');
+    const fileInfo = document.getElementById('fileInfo');
+    
+    if (dropZone && fileInput) {
+        dropZone.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0 && fileInfo) {
+                const file = this.files[0];
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                
+                fileInfo.innerHTML = `<strong>Выбран файл:</strong> ${file.name} (${sizeMB} MB)`;
+                fileInfo.style.display = 'block';
+                
+                // Проверка размера
+                if (file.size > 500 * 1024 * 1024) {
+                    alert('⚠️ Файл слишком большой! Максимум 500MB');
+                    this.value = '';
+                    fileInfo.style.display = 'none';
+                }
+            }
+        });
+    }
+    
+    // Проверяем авторизацию
+    fetch('/api/system-stats/', {
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (response.status === 200) {
+            console.log('✅ Пользователь авторизован');
+        } else {
+            console.log('⚠️ Пользователь не авторизован');
+        }
+    })
+    .catch(error => {
+        console.log('⚠️ Не удалось проверить авторизацию:', error);
+    });
+});
+</script>
+{% endblock %}

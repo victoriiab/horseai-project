@@ -1,0 +1,437 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}HorseAI - Анализ состояния лошадей{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Стили для главной страницы в минималистичном стиле */
+    .hero {
+        text-align: center;
+        padding: 60px 0;
+        margin-bottom: 40px;
+    }
+
+    .hero h1 {
+        font-size: 36px;
+        font-weight: 700;
+        color: var(--accent-light);
+        margin-bottom: 16px;
+        line-height: 1.2;
+    }
+
+    .hero p {
+        color: var(--text-secondary);
+        font-size: 18px;
+        max-width: 800px;
+        margin: 0 auto 32px;
+        line-height: 1.6;
+    }
+
+    .hero-actions {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        margin-top: 32px;
+    }
+
+    .btn-hero {
+        padding: 12px 28px;
+        border-radius: var(--radius);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 15px;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-primary-lg {
+        background: var(--accent);
+        color: white;
+        border: 1px solid var(--accent);
+    }
+
+    .btn-primary-lg:hover {
+        background: var(--accent-hover);
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary-lg {
+        background: transparent;
+        color: var(--text-primary);
+        border: 1px solid var(--border);
+    }
+
+    .btn-secondary-lg:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--accent);
+    }
+
+    /* Функции системы */
+    .features {
+        margin-bottom: 60px;
+    }
+
+    .features h2 {
+        font-size: 24px;
+        color: var(--text-primary);
+        margin-bottom: 32px;
+        text-align: center;
+        font-weight: 600;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+    }
+
+    .feature {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        transition: var(--transition);
+    }
+
+    .feature:hover {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+    }
+
+    .feature h3 {
+        font-size: 18px;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+        font-weight: 600;
+    }
+
+    .feature p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    /* Статистика */
+    .stats {
+        margin-bottom: 40px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+        margin-bottom: 40px;
+    }
+
+    .stat {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--accent-light);
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+
+    /* Быстрые действия */
+    .quick-actions {
+        margin-bottom: 40px;
+    }
+
+    .quick-actions h2 {
+        font-size: 20px;
+        color: var(--text-primary);
+        margin-bottom: 20px;
+        font-weight: 600;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+    }
+
+    .action-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: var(--transition);
+        display: block;
+    }
+
+    .action-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+    }
+
+    .action-card h3 {
+        font-size: 16px;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .action-card p {
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .hero {
+            padding: 40px 0;
+        }
+        
+        .hero h1 {
+            font-size: 28px;
+        }
+        
+        .hero p {
+            font-size: 16px;
+            padding: 0 16px;
+        }
+        
+        .hero-actions {
+            flex-direction: column;
+            align-items: center;
+            padding: 0 16px;
+        }
+        
+        .btn-hero {
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .features-grid,
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    {% if not user.is_authenticated %}
+        <!-- Главная для гостей -->
+        <section class="hero">
+            <h1>HorseAI — Умный анализ лошадей</h1>
+            
+            <p>
+                Автоматический анализ видеозаписей для выявления хромоты и расчёта рациона кормления. 
+                Современные алгоритмы компьютерного зрения для заботы о здоровье ваших животных.
+            </p>
+            
+            <div class="hero-actions">
+                <a href="{% url 'login' %}" class="btn-hero btn-primary-lg">Войти в систему</a>
+                <a href="{% url 'register' %}" class="btn-hero btn-secondary-lg">Зарегистрироваться</a>
+            </div>
+        </section>
+
+        <section class="features">
+            <h2>Возможности системы</h2>
+            
+            <div class="features-grid">
+                <article class="feature">
+                    <h3>Анализ походки</h3>
+                    <p>Автоматическое выявление хромоты по видео с помощью компьютерного зрения.</p>
+                </article>
+                
+                <article class="feature">
+                    <h3>Расчёт рациона</h3>
+                    <p>Персональные рекомендации по кормлению на основе параметров животного.</p>
+                </article>
+                
+                <article class="feature">
+                    <h3>История анализов</h3>
+                    <p>Отслеживание динамики состояния и хранение всех результатов.</p>
+                </article>
+                
+                <article class="feature">
+                    <h3>Удобный интерфейс</h3>
+                    <p>Простой и понятный интерфейс, доступный с любого устройства.</p>
+                </article>
+            </div>
+        </section>
+
+    {% else %}
+        <!-- Главная для авторизованных пользователей -->
+        <section class="hero">
+            <h1>
+                {% if user.is_staff %}
+                    Панель администратора
+                {% else %}
+                    Добро пожаловать, {{ user.username }}
+                {% endif %}
+            </h1>
+            
+            <p>
+                {% now "d E Y, H:i" %}
+                {% if user.is_staff %}
+                    • У вас полный доступ ко всем функциям системы
+                {% endif %}
+            </p>
+        </section>
+
+        <!-- Статистика -->
+        {% if user.is_staff %}
+        <section class="stats">
+            <h2>Статистика системы</h2>
+            
+            <div class="stats-grid">
+                <div class="stat">
+                    <span class="stat-number" id="stat-users">{{ users_count|default:"0" }}</span>
+                    <span class="stat-label">Пользователей</span>
+                </div>
+                
+                <div class="stat">
+                    <span class="stat-number" id="stat-animals">{{ animals_count|default:"0" }}</span>
+                    <span class="stat-label">Животных</span>
+                </div>
+                
+                <div class="stat">
+                    <span class="stat-number" id="stat-videos">{{ videos_count|default:"0" }}</span>
+                    <span class="stat-label">Видео</span>
+                </div>
+                
+                <div class="stat">
+                    <span class="stat-number" id="stat-analyses">{{ analyses_count|default:"0" }}</span>
+                    <span class="stat-label">Анализов</span>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Быстрые действия -->
+        <section class="quick-actions">
+            <h2>Быстрые действия</h2>
+            
+            <div class="actions-grid">
+                {% if user.is_staff %}
+                    <!-- Админ -->
+                    <a href="/super-admin/" class="action-card">
+                        <h3>Super Admin</h3>
+                        <p>Панель управления системой</p>
+                    </a>
+                    
+                    <a href="/admin/" class="action-card">
+                        <h3>Админка Django</h3>
+                        <p>Расширенное управление</p>
+                    </a>
+                    
+                    <a href="/admin/database/user/" class="action-card">
+                        <h3>Пользователи</h3>
+                        <p>Управление учетными записями</p>
+                    </a>
+                    
+                    <a href="/admin/database/animal/" class="action-card">
+                        <h3>Все животные</h3>
+                        <p>Просмотр всех животных</p>
+                    </a>
+                {% else %}
+                    <!-- Обычный пользователь -->
+                    <a href="{% url 'animals' %}" class="action-card">
+                        <h3>Мои лошади</h3>
+                        <p>Управление вашими животными</p>
+                    </a>
+                    
+                    <a href="{% url 'video_upload' %}" class="action-card">
+                        <h3>Анализ походки</h3>
+                        <p>Загрузить видео для анализа</p>
+                    </a>
+                    
+                    <a href="{% url 'analysis_results' %}" class="action-card">
+                        <h3>Результаты</h3>
+                        <p>Просмотр ваших анализов</p>
+                    </a>
+                    
+                    <a href="{% url 'ration' %}" class="action-card">
+                        <h3>Рационы</h3>
+                        <p>Расчет кормления</p>
+                    </a>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if user.is_staff and latest_animals %}
+        <!-- Недавняя активность -->
+        <section class="quick-actions">
+            <h2>Недавние животные</h2>
+            
+            <div class="actions-grid">
+                {% for animal in latest_animals|slice:":4" %}
+                <div class="feature">
+                    <h3>{{ animal.name|default:"Без имени" }}</h3>
+                    <p>
+                        Владелец: {{ animal.user.username }}<br>
+                        Добавлен: {{ animal.created_at|date:"d.m.Y" }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Автообновление статистики для админов
+    {% if user.is_authenticated and user.is_staff %}
+    function updateStats() {
+        fetch('/api/system-stats/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Просто обновляем значения без анимации
+                    const elements = {
+                        'users': document.getElementById('stat-users'),
+                        'animals': document.getElementById('stat-animals'),
+                        'videos': document.getElementById('stat-videos'),
+                        'analyses': document.getElementById('stat-analyses')
+                    };
+                    
+                    for (const [key, element] of Object.entries(elements)) {
+                        if (element && data[`${key}_count`]) {
+                            element.textContent = data[`${key}_count`];
+                        }
+                    }
+                }
+            })
+            .catch(error => console.log('Статистика не обновлена:', error.message));
+    }
+    
+    // Обновляем при загрузке
+    updateStats();
+    
+    // И каждые 30 секунд
+    setInterval(updateStats, 30000);
+    {% endif %}
+});
+</script>
+{% endblock %}

@@ -1,0 +1,183 @@
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import datetime
+import json
+import os
+import uuid
+
+# ИМПОРТИРУЕМ МОДЕЛИ
+try:
+    from web.database.models import Animal, Video, Analysis, Ration, Feed, User, LamenessAnalysis
+    print("✅ Модели импортированы из web.database.models")
+except ImportError:
+    try:
+        from database.models import Animal, Video, Analysis, Ration, Feed, User, LamenessAnalysis
+        print("✅ Модели импортированы из database.models")
+    except ImportError as e:
+        print(f"❌ Ошибка импорта моделей: {e}")
+
+# ИМПОРТИРУЕМ СЕРИАЛИЗАТОРЫ
+try:
+    from .serializers import (
+        AnimalSerializer, VideoSerializer, AnalysisSerializer,
+        RationSerializer, FeedSerializer, LamenessAnalysisSerializer
+    )
+    print("✅ Сериализаторы импортированы")
+except ImportError as e:
+    print(f"❌ Ошибка импорта сериализаторов: {e}")
+
+class AnimalViewSet(viewsets.ModelViewSet):
+    queryset = Animal.objects.all()
+    serializer_class = AnimalSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        try:
+            custom_user = User.objects.get(login=self.request.user.username)
+            return Animal.objects.filter(user=custom_user)
+        except User.DoesNotExist:
+            return Animal.objects.none()
+
+    def perform_create(self, serializer):
+        try:
+            custom_user = User.objects.get(login=self.request.user.username)
+            serializer.save(user=custom_user)
+            return Response({'success': True, 'message': 'Животное добавлено'})
+        except User.DoesNotExist:
+            return Response({'success': False, 'error': 'Пользователь не найден'},
+                          status=status.HTTP_400_BAD_REQUEST)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Получение одного животного (для совместимости с вашим JS)"""
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return Response({
+                'success': True,
+                **serializer.data
+            })
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class VideoViewSet(viewsets.ModelViewSet):
+    queryset = Video.objects.all()
+    serializer_class = VideoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        try:
+            custom_user = User.objects.get(login=self.request.user.username)
+            return Video.objects.filter(user=custom_user)
+        except User.DoesNotExist:
+            return Video.objects.none()
+
+class AnalysisViewSet(viewsets.ModelViewSet):
+    queryset = Analysis.objects.all()
+    serializer_class = AnalysisSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        try:
+            custom_user = User.objects.get(login=self.request.user.username)
+            return Analysis.objects.filter(video__user=custom_user)
+        except User.DoesNotExist:
+            return Analysis.objects.none()
+
+class FeedViewSet(viewsets.ModelViewSet):
+    queryset = Feed.objects.all()
+    serializer_class = FeedSerializer
+    permission_classes = [IsAuthenticated]
+
+class RationViewSet(viewsets.ModelViewSet):
+    queryset = Ration.objects.all()
+    serializer_class = RationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request):
+        """Создать новый рацион"""
+        try:
+            data = request.data
+            print("=" * 50)
+            print("СОХРАНЕНИЕ РАЦИОНА - получены данные:")
+            print(json.dumps(data, indent=2, ensure_ascii=False))
+            print("=" * 50)
+            
+            # Получаем или создаем животное
+            animal_id = data.get('animal_id')
+            if not animal_id:
+                return Response({'error': 'Не указан animal_id'}, status=400)
+            
+            try:
+                animal = Animal.objects.get(pk=animal_id)
+            except Animal.DoesNotExist:
+                return Response({'error': f'Животное с ID {animal_id} не найдено'}, status=404)
+            
+            # Получаем последний анализ для этого животного (если есть)
+            last_analysis = Analysis.objects.filter(
+                video__animal=animal
+            ).order_by('-analysis_date').first()
+            
+            # Создаем рацион
+            ration = Ration.objects.create(
+                animal=animal,
+                analysis=last_analysis,
+                total_dmi=float(data.get('hay_amount', 0)) + float(data.get('grain_amount', 0)) + float(data.get('supplement_amount', 0)),
+                energy_content=float(data.get('energy', 0)),
+                calculation_date=timezone.now(),
+                composition={
+                    'animal_name': data.get('animal_name', ''),
+                    'weight': data.get('weight', 0),
+                    'lameness': data.get('lameness', 'none'),
+                    'lameness_duration': data.get('lameness_duration', ''),
+                    'supplements': data.get('supplements', []),
+                    'hay_amount': data.get('hay_amount', 0),
+                    'grain_amount': data.get('grain_amount', 0),
+                    'supplement_amount': data.get('supplement_amount', 0),
+                    'vegetable_amount': data.get('vegetable_amount', 0),
+                    'premix_amount': data.get('premix_amount', 0),
+                    'total_day_cost': data.get('total_day_cost', 0),
+                    'total_month_cost': data.get('total_month_cost', 0),
+                    'recommendations': data.get('recommendations', []),
+                }
+            )
+            
+            serializer = self.get_serializer(ration)
+            return Response({
+                'message': 'Рацион успешно сохранен',
+                'id': ration.ration_id,
+                'animal_name': ration.animal.name if ration.animal else 'Неизвестно',
+                'weight': data.get('weight', 0),
+                'total_cost': data.get('total_month_cost', 0),
+                'data': serializer.data
+            }, status=201)
+            
+        except Exception as e:
+            print(f"Ошибка при сохранении рациона: {str(e)}")
+            return Response({'error': str(e)}, status=400)
+    
+    @action(detail=False, methods=['get'])
+    def by_animal(self, request):
+        """Получить рационы по животному"""
+        animal_id = request.query_params.get('animal_id')
+        if not animal_id:
+            return Response({'error': 'Не указан animal_id'}, status=400)
+        
+        rations = Ration.objects.filter(animal_id=animal_id).order_by('-calculation_date')
+        serializer = self.get_serializer(rations, many=True)
+        return Response(serializer.data)
+    
+    def get_queryset(self):
+        try:
+            custom_user = User.objects.get(login=self.request.user.username)
+            return Ration.objects.filter(animal__user=custom_user)
+        except User.DoesNotExist:
+            return Ration.objects.none()
+
+

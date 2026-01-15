@@ -1,0 +1,884 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Загрузка видео для анализа - HorseAI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-container {
+        max-width: 800px;
+        margin: 40px auto;
+        padding: 30px;
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .upload-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .upload-title {
+        font-size: 32px;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .upload-subtitle {
+        color: var(--text-secondary);
+        font-size: 16px;
+        line-height: 1.6;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* Форма */
+    .form-group {
+        margin-bottom: 25px;
+    }
+
+    .form-label {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .form-select {
+        width: 100%;
+        padding: 14px 18px;
+        background: var(--bg-dark);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .form-select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+    }
+
+    /* Dropzone */
+    .dropzone {
+        border: 3px dashed var(--border);
+        border-radius: var(--radius-lg);
+        padding: 60px 40px;
+        text-align: center;
+        margin: 30px 0;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background: var(--bg-hover);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dropzone:hover {
+        border-color: var(--accent);
+        background: rgba(217, 119, 6, 0.05);
+    }
+
+    .dropzone.dragover {
+        border-color: var(--accent);
+        background: rgba(217, 119, 6, 0.1);
+        transform: scale(1.02);
+    }
+
+    .dropzone-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+        opacity: 0.7;
+        transition: all 0.3s ease;
+    }
+
+    .dropzone:hover .dropzone-icon {
+        opacity: 1;
+        transform: translateY(-5px);
+    }
+
+    .dropzone-text {
+        color: var(--text-secondary);
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .dropzone-hint {
+        color: var(--text-tertiary);
+        font-size: 14px;
+        margin-top: 10px;
+    }
+
+    .dropzone-file-info {
+        margin-top: 20px;
+        padding: 15px;
+        background: var(--bg-dark);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        display: none;
+    }
+
+    .file-name {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 5px;
+        word-break: break-all;
+    }
+
+    .file-size {
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    /* Кнопки */
+    .upload-buttons {
+        display: flex;
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    .btn-upload {
+        flex: 1;
+        padding: 16px;
+        background: linear-gradient(135deg, var(--accent), var(--earth));
+        color: white;
+        border: none;
+        border-radius: var(--radius);
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .btn-upload:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg), var(--glow);
+        background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+    }
+
+    .btn-upload:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-secondary {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+        border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+        background: var(--border);
+        border-color: var(--accent);
+    }
+
+    /* Прогресс */
+    .progress-container {
+        margin-top: 30px;
+        display: none;
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .progress-title {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .progress-percent {
+        color: var(--accent);
+        font-weight: 700;
+        font-size: 20px;
+    }
+
+    .progress-bar {
+        height: 12px;
+        background: var(--bg-hover);
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), var(--earth));
+        border-radius: 6px;
+        width: 0%;
+        transition: width 0.5s ease;
+    }
+
+    .progress-status {
+        color: var(--text-secondary);
+        font-size: 14px;
+        text-align: center;
+        min-height: 20px;
+        font-style: italic;
+    }
+
+    /* Результат */
+    .result-container {
+        margin-top: 30px;
+        padding: 30px;
+        background: linear-gradient(145deg, var(--bg-card), var(--bg-dark));
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        display: none;
+    }
+
+    .result-header {
+        text-align: center;
+        margin-bottom: 25px;
+    }
+
+    .result-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+    }
+
+    .result-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 10px;
+    }
+
+    .result-subtitle {
+        color: var(--text-secondary);
+        font-size: 16px;
+        line-height: 1.6;
+    }
+
+    .result-details {
+        margin-top: 25px;
+        padding: 20px;
+        background: var(--bg-dark);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+    }
+
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .detail-item:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        color: var(--text-secondary);
+        font-size: 15px;
+    }
+
+    .detail-value {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .result-actions {
+        display: flex;
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    /* Сообщения */
+    .message {
+        padding: 15px 20px;
+        border-radius: var(--radius);
+        margin-bottom: 20px;
+        display: none;
+        animation: slideIn 0.3s ease;
+    }
+
+    .message-success {
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #10b981;
+    }
+
+    .message-error {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+    }
+
+    .message-info {
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        color: #3b82f6;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Скрытый CSRF токен -->
+<input type="hidden" id="csrf_token" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<div class="upload-container">
+    <div class="upload-header">
+        <h1 class="upload-title">
+            <span>🎬</span>
+            Анализ походки лошади
+        </h1>
+        <p class="upload-subtitle">
+            Загрузите видео лошади в движении для автоматического анализа хромоты.
+            Система определит ключевые точки тела и оценит симметрию движений.
+        </p>
+    </div>
+
+    <!-- Сообщения -->
+    <div id="message" class="message"></div>
+
+    <!-- Форма загрузки -->
+    <div id="uploadForm">
+        <div class="form-group">
+            <label class="form-label">Выберите лошадь для анализа</label>
+            <select id="animalSelect" class="form-select" required>
+                <option value="">-- Выберите лошадь --</option>
+                {% for animal in animals %}
+                <option value="{{ animal.animal_id }}">{{ animal.name|default:"Без имени" }}</option>
+                {% empty %}
+                <option value="" disabled>Нет доступных лошадей</option>
+                {% endfor %}
+            </select>
+            {% if not animals %}
+            <p style="color: var(--accent); margin-top: 10px; font-size: 14px;">
+                ⚠️ У вас нет лошадей. Сначала добавьте лошадь в разделе 
+                <a href="/animals/" style="color: var(--accent-light); text-decoration: underline;">Мои лошади</a>.
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Dropzone -->
+        <div id="dropzone" class="dropzone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text">Перетащите видео файл сюда</div>
+            <div class="dropzone-hint">или нажмите для выбора файла</div>
+            
+            <input type="file" id="videoFile" accept="video/*" style="display: none;">
+            
+            <div id="fileInfo" class="dropzone-file-info">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-size" id="fileSize"></div>
+            </div>
+        </div>
+
+        <!-- Кнопки -->
+        <div class="upload-buttons">
+            <button type="button" class="btn-upload btn-secondary" onclick="window.history.back()">
+                <span>←</span>
+                Назад
+            </button>
+            <button id="uploadBtn" class="btn-upload" onclick="uploadVideo()" disabled>
+                <span>🚀</span>
+                Начать анализ
+            </button>
+            <button id="testBtn" class="btn-upload btn-secondary" onclick="testMLModel()">
+                <span>🔧</span>
+                Тест ML
+            </button>
+        </div>
+    </div>
+
+    <!-- Прогресс -->
+    <div id="progressContainer" class="progress-container">
+        <div class="progress-header">
+            <div class="progress-title">
+                <span id="progressIcon">⏳</span>
+                Обработка видео
+            </div>
+            <div class="progress-percent" id="progressPercent">0%</div>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="progress-status" id="progressStatus">
+            Подготовка к анализу...
+        </div>
+    </div>
+
+    <!-- Результат -->
+    <div id="resultContainer" class="result-container">
+        <div class="result-header">
+            <div class="result-icon" id="resultIcon">✅</div>
+            <h2 class="result-title" id="resultTitle">Анализ завершен</h2>
+            <p class="result-subtitle" id="resultSubtitle"></p>
+        </div>
+        
+        <div class="result-details" id="resultDetails">
+            <!-- Детали результата появятся здесь -->
+        </div>
+        
+        <div class="result-actions">
+            <button class="btn-upload btn-secondary" onclick="resetForm()">
+                <span>🔄</span>
+                Новый анализ
+            </button>
+            <button class="btn-upload" onclick="viewResults()">
+                <span>📊</span>
+                Смотреть все анализы
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Безопасная функция получения CSRF токена
+function getCSRFToken() {
+    // Способ 1: Ищем скрытый input
+    const csrfInput = document.getElementById('csrf_token');
+    if (csrfInput) return csrfInput.value;
+    
+    // Способ 2: Ищем в cookies
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue || '';
+}
+
+function showMessage(text, type = 'info') {
+    const messageEl = document.getElementById('message');
+    if (!messageEl) {
+        console.error('Элемент message не найден');
+        return;
+    }
+    messageEl.textContent = text;
+    messageEl.className = `message message-${type}`;
+    messageEl.style.display = 'block';
+    
+    if (type === 'success' || type === 'info') {
+        setTimeout(() => {
+            if (messageEl) messageEl.style.display = 'none';
+        }, 5000);
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Глобальные переменные
+let selectedFile = null;
+let currentTaskId = null;
+let checkInterval = null;
+
+// Безопасный выбор элемента
+function getElement(id) {
+    const element = document.getElementById(id);
+    if (!element) {
+        console.error(`Элемент ${id} не найден`);
+        throw new Error(`Элемент ${id} не найден`);
+    }
+    return element;
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        const dropzone = getElement('dropzone');
+        const fileInput = getElement('videoFile');
+        const uploadBtn = getElement('uploadBtn');
+        const animalSelect = getElement('animalSelect');
+        
+        // Обработка выбора файла через клик
+        dropzone.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // Обработка выбора файла
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        // Drag and drop
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+        
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+        
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            
+            if (e.dataTransfer.files.length > 0) {
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+        
+        // Проверка доступности кнопки загрузки
+        function checkUploadButton() {
+            const isAnimalSelected = animalSelect.value !== '';
+            const isFileSelected = selectedFile !== null;
+            uploadBtn.disabled = !(isAnimalSelected && isFileSelected);
+        }
+        
+        animalSelect.addEventListener('change', checkUploadButton);
+        
+        // Изначальная проверка
+        checkUploadButton();
+        
+        console.log('Форма загрузки видео инициализирована');
+        
+    } catch (error) {
+        console.error('Ошибка инициализации формы:', error);
+        showMessage('Ошибка загрузки формы: ' + error.message, 'error');
+    }
+});
+
+// Обработка выбора файла
+function handleFileSelect(file) {
+    try {
+        // Проверка типа файла
+        const allowedTypes = ['video/mp4', 'video/avi', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+        if (!allowedTypes.includes(file.type) && !file.name.match(/\.(mp4|avi|mov|mkv|webm)$/i)) {
+            showMessage('Пожалуйста, выберите видео файл (MP4, AVI, MOV, MKV, WebM)', 'error');
+            return;
+        }
+        
+        // Проверка размера (макс 500MB)
+        const maxSize = 500 * 1024 * 1024;
+        if (file.size > maxSize) {
+            showMessage('Файл слишком большой. Максимальный размер: 500MB', 'error');
+            return;
+        }
+        
+        selectedFile = file;
+        
+        // Показываем информацию о файле
+        getElement('fileName').textContent = file.name;
+        getElement('fileSize').textContent = formatFileSize(file.size);
+        getElement('fileInfo').style.display = 'block';
+        
+        // Включаем кнопку если животное выбрано
+        const animalSelect = getElement('animalSelect');
+        const uploadBtn = getElement('uploadBtn');
+        uploadBtn.disabled = animalSelect.value === '';
+        
+        showMessage(`Выбран файл: ${file.name} (${formatFileSize(file.size)})`, 'success');
+        
+    } catch (error) {
+        console.error('Ошибка обработки файла:', error);
+        showMessage('Ошибка обработки файла: ' + error.message, 'error');
+    }
+}
+
+// Тест ML модели
+async function testMLModel() {
+    try {
+        showMessage('Тестирование ML модели...', 'info');
+        
+        const response = await fetch('/api/ml/test/');
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage(`✅ ML модель доступна: ${data.message}`, 'success');
+            console.log('ML тест:', data);
+        } else {
+            showMessage(`❌ Ошибка ML модели: ${data.error}`, 'error');
+        }
+    } catch (error) {
+        showMessage(`❌ Ошибка теста: ${error.message}`, 'error');
+    }
+}
+
+// Загрузка видео
+async function uploadVideo() {
+    try {
+        if (!selectedFile) {
+            showMessage('Пожалуйста, выберите видео файл', 'error');
+            return;
+        }
+        
+        const animalId = getElement('animalSelect').value;
+        if (!animalId) {
+            showMessage('Пожалуйста, выберите лошадь', 'error');
+            return;
+        }
+        
+        // Показываем прогресс
+        getElement('uploadForm').style.display = 'none';
+        getElement('progressContainer').style.display = 'block';
+        updateProgress(10, 'Загрузка видео на сервер...');
+        
+        const formData = new FormData();
+        formData.append('animal_id', animalId);
+        formData.append('video_file', selectedFile);
+        
+        const response = await fetch('/api/ml/upload/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage('✅ Видео успешно загружено. Начинается анализ...', 'success');
+            currentTaskId = data.task_id;
+            updateProgress(30, 'Анализ видео...');
+            
+            // Запускаем проверку статуса
+            startCheckingStatus(data.task_id);
+        } else {
+            throw new Error(data.error || 'Ошибка загрузки видео');
+        }
+        
+    } catch (error) {
+        console.error('Ошибка загрузки:', error);
+        showMessage(`❌ Ошибка: ${error.message}`, 'error');
+        resetToForm();
+    }
+}
+
+// Проверка статуса анализа
+async function startCheckingStatus(taskId) {
+    checkInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/ml/status/${taskId}/`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const progress = data.progress || 0;
+                updateProgress(30 + progress * 0.7, data.message || 'Обработка...');
+                
+                if (data.status === 'completed') {
+                    clearInterval(checkInterval);
+                    await handleCompletedAnalysis(data);
+                } else if (data.status === 'failed') {
+                    clearInterval(checkInterval);
+                    showMessage(`❌ Ошибка анализа: ${data.error || 'Неизвестная ошибка'}`, 'error');
+                    resetToForm();
+                }
+            } else {
+                clearInterval(checkInterval);
+                showMessage('❌ Ошибка проверки статуса: ' + (data.error || 'Неизвестная ошибка'), 'error');
+                resetToForm();
+            }
+        } catch (error) {
+            console.error('Ошибка проверки статуса:', error);
+        }
+    }, 2000);
+}
+
+// Обработка завершенного анализа
+async function handleCompletedAnalysis(data) {
+    try {
+        updateProgress(100, 'Анализ завершен!');
+        
+        // Сохраняем результат в БД
+        const saveResponse = await fetch('/api/ml/save-result/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                task_id: currentTaskId,
+                video_id: data.result?.video_id || 0
+            })
+        });
+        
+        const saveData = await saveResponse.json();
+        
+        if (saveData.success) {
+            showResult(saveData, data.result);
+        } else {
+            throw new Error(saveData.error || 'Ошибка сохранения результата');
+        }
+    } catch (error) {
+        console.error('Ошибка сохранения:', error);
+        showMessage(`⚠️ Анализ выполнен, но возникла ошибка: ${error.message}`, 'error');
+        showResult({}, data.result);
+    }
+}
+
+// Показ результата
+function showResult(saveData, mlResult) {
+    try {
+        getElement('progressContainer').style.display = 'none';
+        getElement('resultContainer').style.display = 'block';
+        
+        const isLame = mlResult?.is_lame || saveData.is_lame || false;
+        const probability = mlResult?.lameness_probability || saveData.lameness_probability || 0;
+        const diagnosis = mlResult?.diagnosis || saveData.diagnosis || 'Результат анализа';
+        const confidence = mlResult?.confidence || saveData.confidence || 0;
+        
+        // Обновляем иконку и заголовок
+        const resultIcon = getElement('resultIcon');
+        const resultTitle = getElement('resultTitle');
+        
+        if (isLame) {
+            resultIcon.textContent = '⚠️';
+            resultTitle.textContent = 'Обнаружена хромота';
+            resultTitle.style.color = 'var(--accent)';
+        } else {
+            resultIcon.textContent = '✅';
+            resultTitle.textContent = 'Хромота не обнаружена';
+            resultTitle.style.color = 'var(--success)';
+        }
+        
+        getElement('resultSubtitle').textContent = diagnosis;
+        
+        // Заполняем детали
+        const detailsHtml = `
+            <div class="detail-item">
+                <span class="detail-label">Результат:</span>
+                <span class="detail-value">${isLame ? 'Хромота обнаружена' : 'Норма'}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Вероятность хромоты:</span>
+                <span class="detail-value">${probability.toFixed(1)}%</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Достоверность:</span>
+                <span class="detail-value">${confidence.toFixed(1)}%</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Рекомендация:</span>
+                <span class="detail-value">${isLame ? 'Консультация ветеринара' : 'Продолжайте наблюдение'}</span>
+            </div>
+        `;
+        
+        getElement('resultDetails').innerHTML = detailsHtml;
+        
+        showMessage('✅ Анализ успешно завершен!', 'success');
+    } catch (error) {
+        console.error('Ошибка показа результата:', error);
+        showMessage('Ошибка отображения результата', 'error');
+    }
+}
+
+// Обновление прогресса
+function updateProgress(percent, message) {
+    try {
+        getElement('progressPercent').textContent = `${Math.round(percent)}%`;
+        getElement('progressFill').style.width = `${percent}%`;
+        getElement('progressStatus').textContent = message;
+        
+        const iconEl = getElement('progressIcon');
+        if (percent < 30) iconEl.textContent = '⏳';
+        else if (percent < 70) iconEl.textContent = '🔍';
+        else if (percent < 100) iconEl.textContent = '📊';
+        else iconEl.textContent = '✅';
+    } catch (error) {
+        console.error('Ошибка обновления прогресса:', error);
+    }
+}
+
+// Сброс формы
+function resetForm() {
+    try {
+        selectedFile = null;
+        currentTaskId = null;
+        
+        getElement('uploadForm').style.display = 'block';
+        getElement('progressContainer').style.display = 'none';
+        getElement('resultContainer').style.display = 'none';
+        
+        getElement('animalSelect').value = '';
+        getElement('videoFile').value = '';
+        getElement('fileInfo').style.display = 'none';
+        getElement('uploadBtn').disabled = true;
+        getElement('message').style.display = 'none';
+        
+        if (checkInterval) {
+            clearInterval(checkInterval);
+            checkInterval = null;
+        }
+    } catch (error) {
+        console.error('Ошибка сброса формы:', error);
+    }
+}
+
+function resetToForm() {
+    try {
+        getElement('uploadForm').style.display = 'block';
+        getElement('progressContainer').style.display = 'none';
+        getElement('resultContainer').style.display = 'none';
+    } catch (error) {
+        console.error('Ошибка resetToForm:', error);
+    }
+}
+
+// Просмотр всех анализов
+function viewResults() {
+    window.location.href = '/analysis/results/';
+}
+
+
+function uploadVideoWithRealModel(formData) {
+    // Используем новый endpoint с реальной моделью
+    return fetch('/api/upload/real-model/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    });
+}
+
+</script>
+{% endblock %}

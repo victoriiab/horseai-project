@@ -1,0 +1,324 @@
+{% extends 'frontend/base.html' %}
+{% load static %}
+
+{% block title %}Мои лошади - HorseAI{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <!-- Заголовок с кнопкой -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #2d3448;">
+        <h1 style="font-size: 32px; color: #fbbf24; display: flex; align-items: center; gap: 15px;">
+            <span>🐴</span>
+            Мои лошади
+            <span id="animalsCount" style="font-size: 20px; color: #94a3b8;">({{ animals|length }})</span>
+        </h1>
+        
+        <button id="addAnimalBtn" 
+                style="background: linear-gradient(135deg, #65a30d, #4d7c0f); 
+                       color: white; border: none; padding: 12px 24px; 
+                       border-radius: 8px; font-size: 16px; font-weight: 600; 
+                       cursor: pointer; display: flex; align-items: center; gap: 8px;">
+            ➕ Добавить лошадь
+        </button>
+    </div>
+
+    <!-- Список животных -->
+    <div id="animals-container">
+        {% if animals %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px;">
+                {% for animal in animals %}
+                <div style="background: #222736; border: 1px solid #2d3448; border-radius: 12px; padding: 25px; transition: all 0.3s;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="font-size: 22px; color: #e2e8f0; margin: 0;">{{ animal.name }}</h3>
+                        {% if animal.sex %}
+                        <span style="background: rgba(217, 119, 6, 0.2); color: #d97706; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                            {% if animal.sex == 'M' or animal.sex == 'жеребец' %}♂️ Жеребец
+                            {% elif animal.sex == 'F' or animal.sex == 'кобыла' %}♀️ Кобыла
+                            {% else %}{{ animal.sex }}{% endif %}
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        {% if animal.age %}
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <span style="color: #94a3b8;">Возраст:</span>
+                            <span style="color: #e2e8f0; font-weight: 500;">{{ animal.age }} лет</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if animal.estimated_weight %}
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <span style="color: #94a3b8;">Вес:</span>
+                            <span style="color: #e2e8f0; font-weight: 500;">{{ animal.estimated_weight }} кг</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if animal.created_at %}
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <span style="color: #94a3b8;">Добавлен:</span>
+                            <span style="color: #e2e8f0; font-weight: 500;">{{ animal.created_at|date:"d.m.Y" }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button onclick="editAnimal({{ animal.animal_id }})" 
+                                style="flex: 1; padding: 10px; background: #2a3042; border: 1px solid #2d3448; border-radius: 6px; color: #e2e8f0; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            ✏️ Редактировать
+                        </button>
+                        <button onclick="deleteAnimal({{ animal.animal_id }}, '{{ animal.name }}')" 
+                                style="flex: 1; padding: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; color: #fca5a5; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            🗑️ Удалить
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 60px 20px; background: #222736; border-radius: 12px; border: 2px dashed #2d3448;">
+                <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.5;">🐴</div>
+                <h2 style="font-size: 22px; color: #94a3b8; margin-bottom: 10px;">Нет лошадей</h2>
+                <p style="color: #64748b; margin-bottom: 25px; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    Добавьте свою первую лошадь, чтобы начать анализ
+                </p>
+                <button id="addAnimalEmptyBtn" 
+                        style="background: linear-gradient(135deg, #65a30d, #4d7c0f); 
+                               color: white; border: none; padding: 12px 24px; 
+                               border-radius: 8px; font-size: 16px; font-weight: 600; 
+                               cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0 auto;">
+                    ➕ Добавить первую лошадь
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно -->
+<div id="animalModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+    <div style="background: #222736; border-radius: 12px; padding: 30px; width: 90%; max-width: 500px; border: 1px solid #2d3448; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #2d3448;">
+            <h2 style="font-size: 24px; color: #e2e8f0; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <span>🐴</span>
+                <span id="modalTitle">Добавить лошадь</span>
+            </h2>
+            <button onclick="closeModal()" style="background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer; padding: 5px; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                ×
+            </button>
+        </div>
+        
+        <form id="animalForm" onsubmit="saveAnimal(event)">
+            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+            <input type="hidden" id="animalId" name="animal_id">
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #94a3b8; font-size: 14px; font-weight: 500; margin-bottom: 8px;">Имя лошади *</label>
+                <input type="text" id="animalName" name="name" required 
+                       style="width: 100%; padding: 12px 16px; background: #1a1f2b; border: 1px solid #2d3448; border-radius: 8px; color: #e2e8f0; font-size: 15px;"
+                       placeholder="Например: Буран">
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #94a3b8; font-size: 14px; font-weight: 500; margin-bottom: 8px;">Пол</label>
+                <select id="animalSex" name="sex" 
+                        style="width: 100%; padding: 12px 16px; background: #1a1f2b; border: 1px solid #2d3448; border-radius: 8px; color: #e2e8f0; font-size: 15px;">
+                    <option value="">Не указан</option>
+                    <option value="жеребец">♂️ Жеребец</option>
+                    <option value="кобыла">♀️ Кобыла</option>
+                    <option value="мерин">🐴 Мерин</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #94a3b8; font-size: 14px; font-weight: 500; margin-bottom: 8px;">Возраст (лет)</label>
+                <input type="number" id="animalAge" name="age" 
+                       style="width: 100%; padding: 12px 16px; background: #1a1f2b; border: 1px solid #2d3448; border-radius: 8px; color: #e2e8f0; font-size: 15px;"
+                       placeholder="Например: 5" min="0" max="40">
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #94a3b8; font-size: 14px; font-weight: 500; margin-bottom: 8px;">Вес (кг)</label>
+                <input type="number" id="animalWeight" name="weight" 
+                       style="width: 100%; padding: 12px 16px; background: #1a1f2b; border: 1px solid #2d3448; border-radius: 8px; color: #e2e8f0; font-size: 15px;"
+                       placeholder="Например: 450" min="100" max="1000" step="0.1">
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #2d3448;">
+                <button type="button" onclick="closeModal()" 
+                        style="flex: 1; padding: 14px; background: #2a3042; color: #e2e8f0; border: 1px solid #2d3448; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">
+                    Отмена
+                </button>
+                <button type="submit" id="modalSubmitBtn" 
+                        style="flex: 1; padding: 14px; background: linear-gradient(135deg, #d97706, #a16207); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// 🚀 ПРОСТОЙ И РАБОЧИЙ JavaScript
+console.log('🐴 Инициализация страницы животных...');
+
+// Основные функции
+function openAddModal() {
+    console.log('✅ Открываю модальное окно');
+    document.getElementById('modalTitle').textContent = 'Добавить лошадь';
+    document.getElementById('animalId').value = '';
+    document.getElementById('animalForm').reset();
+    document.getElementById('modalSubmitBtn').textContent = 'Добавить';
+    
+    const modal = document.getElementById('animalModal');
+    modal.style.display = 'flex';
+    console.log('Модальное окно показано');
+}
+
+function closeModal() {
+    console.log('Закрываю модальное окно');
+    document.getElementById('animalModal').style.display = 'none';
+    document.getElementById('animalForm').reset();
+}
+
+function editAnimal(animalId) {
+    console.log('Редактирую животное:', animalId);
+    
+    // Здесь можно добавить логику заполнения формы данными животного
+    // Пока просто открываем форму для добавления
+    openAddModal();
+    
+    // Можно поменять заголовок
+    document.getElementById('modalTitle').textContent = 'Редактировать лошадь';
+    document.getElementById('animalId').value = animalId;
+    document.getElementById('modalSubmitBtn').textContent = 'Сохранить';
+}
+
+function deleteAnimal(animalId, animalName) {
+    if (!confirm(`Удалить лошадь "${animalName}"?`)) return;
+    
+    console.log('Удаляю животное:', animalId);
+    
+    fetch(`/api/animals/${animalId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ ' + (data.error || 'Ошибка удаления'));
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('❌ Не удалось удалить лошадь');
+    });
+}
+
+function saveAnimal(event) {
+    event.preventDefault();
+    console.log('Сохраняю животное...');
+    
+    const animalId = document.getElementById('animalId').value;
+    const url = animalId ? `/api/animals/${animalId}/update/` : '/api/animals/add/';
+    
+    const formData = {
+        name: document.getElementById('animalName').value.trim(),
+        sex: document.getElementById('animalSex').value,
+        age: document.getElementById('animalAge').value || null,
+        weight: document.getElementById('animalWeight').value || null
+    };
+    
+    if (!formData.name) {
+        alert('Введите имя лошади');
+        return;
+    }
+    
+    // Показать загрузку
+    const submitBtn = document.getElementById('modalSubmitBtn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Сохранение...';
+    submitBtn.disabled = true;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            closeModal();
+            location.reload();
+        } else {
+            alert('❌ ' + (data.error || 'Ошибка сохранения'));
+        }
+    })
+    .catch(error => {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+        console.error('Ошибка:', error);
+        alert('❌ Не удалось сохранить лошадь');
+    });
+}
+
+// Вспомогательная функция для CSRF токена
+function getCSRFToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ DOM загружен');
+    
+    // Назначить обработчики кнопкам
+    document.getElementById('addAnimalBtn')?.addEventListener('click', openAddModal);
+    document.getElementById('addAnimalEmptyBtn')?.addEventListener('click', openAddModal);
+    
+    // Подсветить кнопки
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(btn => {
+        btn.style.transition = 'all 0.3s';
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+    
+    console.log('🎯 Все готово! Кнопки работают!');
+});
+
+// Сделать функции глобальными для inline обработчиков
+window.openAddModal = openAddModal;
+window.closeModal = closeModal;
+window.editAnimal = editAnimal;
+window.deleteAnimal = deleteAnimal;
+window.saveAnimal = saveAnimal;
+</script>
+{% endblock %}

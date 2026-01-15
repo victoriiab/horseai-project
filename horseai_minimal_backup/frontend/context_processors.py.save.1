@@ -1,0 +1,149 @@
+from web.database.models import User, Animal, Video, Analysis
+
+
+def menu_items(request):
+    """
+    Контекст-процессор для меню навигации.
+    Добавляет переменную 'menu_items' во все шаблоны.
+    """
+    # Если пользователь НЕ авторизован - только главная и вход
+    if not request.user.is_authenticated:
+        items = [
+            {'name': 'Главная', 'url': '/', 'icon': '🏠'},
+            {'name': 'Войти', 'url': '/login/', 'icon': '🔐'},
+        ]
+        return {'menu_items': items}
+    
+    # Если пользователь авторизован - полное меню
+    items = [
+        {'name': 'Главная', 'url': '/', 'icon': '🏠'},
+        {'name': 'Мои лошади', 'url': '/animals/', 'icon': '🐴'},
+        {'name': 'Анализ походки', 'url': '/video-upload/', 'icon': '📹'},
+        {'name': 'Результаты', 'url': '/analysis/results/', 'icon': '📊'},
+        {'name': 'Рацион', 'url': '/ration/', 'icon': '🥗'},
+    ]
+    
+    # Для админов добавляем панель управления
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        if custom_user.role_id in ['admin', 'superadmin']:
+            items.append({'name': 'Панель управления', 'url': '/dashboard/', 'icon': '🛡️'})
+    except User.DoesNotExist:
+        if hasattr(request.user, 'is_staff') and request.user.is_staff:
+            items.append({'name': 'Панель управления', 'url': '/dashboard/', 'icon': '🛡️'})
+    
+    return {'menu_items': items}1~def menu_items(request):
+    """
+    Контекст-процессор для меню навигации.
+    Добавляет переменную 'menu_items' во все шаблоны.
+    """
+    # Если пользователь НЕ авторизован - только главная и вход
+    if not request.user.is_authenticated:
+        items = [
+            {'name': 'Главная', 'url': '/', 'icon': '🏠'},
+            {'name': 'Войти', 'url': '/login/', 'icon': '🔐'},
+        ]
+        return {'menu_items': items}
+    
+    # Если пользователь авторизован - полное меню
+    items = [
+        {'name': 'Главная', 'url': '/', 'icon': '🏠'},
+        {'name': 'Мои лошади', 'url': '/animals/', 'icon': '🐴'},
+        {'name': 'Анализ походки', 'url': '/video-upload/', 'icon': '📹'},
+        {'name': 'Результаты', 'url': '/analysis/results/', 'icon': '📊'},
+        {'name': 'Рацион', 'url': '/ration/', 'icon': '🥗'},
+    ]
+    
+    # Для админов добавляем панель управления
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        if custom_user.role_id in ['admin', 'superadmin']:
+            items.append({'name': 'Панель управления', 'url': '/dashboard/', 'icon': '🛡️'})
+    except User.DoesNotExist:
+        if hasattr(request.user, 'is_staff') and request.user.is_staff:
+            items.append({'name': 'Панель управления', 'url': '/dashboard/', 'icon': '🛡️'})
+    
+    return {'menu_items': items}1~def menu_items(request):
+    """
+    Контекст-процессор для меню навигации.
+    Добавляет переменную 'menu_items' во все шаблоны.
+    """
+    # Если пользователь НЕ авторизован - только главная и вход
+    if not request.user.is_authenticated:
+        items = [
+            {'name': 'Главная', 'url': '/', 'icon': '🏠'},
+            {'name': 'Войти', 'url': '/login/', 'icon': '🔐'},
+        ]
+        return {'menu_items': items}
+    
+    # Если пользователь авторизован - полное меню
+    items = [
+        {'name': 'Главная', 'url': '/', 'icon': '🏠'},
+        {'name': 'Мои лошади', 'url': '/animals/', 'icon': '🐴'},
+        {'name': 'Анализ походки', 'url': '/video-upload/', 'icon': '📹'},
+        {'name': 'Результаты', 'url': '/analysis/results/', 'icon': '📊'},
+        {'name': 'Рацион', 'url': '/ration/', 'icon': '🥗'},
+    ]
+    
+    # Для админов добавляем панель управления
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        if custom_user.role_id in ['admin', 'superadmin']:
+            items.append({'name': 'Панель управления', 'url': '/dashboard/', 'icon': '🛡️'})
+    except User.DoesNotExist:
+        if hasattr(request.user, 'is_staff') and request.user.is_staff:
+            items.append({'name': 'Панель управления', 'url': '/dashboard/', 'icon': '🛡️'})
+    
+    return {'menu_items': items}1~def menu_items(request):
+    """
+    Контекст-процессор для меню навигации.
+    Добавляет переменную 'menu_items' во все шаблоны.
+    """
+    # Если пользователь НЕ авторизован - только главная и вход
+    if not request.user.is_authenticated:
+        items = [
+            {'name': 'Главная', 'url': '/', 'icon': '🏠'},
+            {'name': 'Войти', 'url': '/login/', 'icon': '🔐'},
+        ]
+        return {'menu_items': items}
+    
+    # Если пользователь авторизован - полное меню
+    items = [
+        {'name': 'Главная', 'url': '/', 'icon': '🏠'},
+        {'name': 'Мои лошади', 'url': '/animals/', 'icon': '🐴'},
+        {'name': 'Анализ походки', 'url': '/video-upload/', 'icon': '📹'},
+        {'name': 'Результаты', 'url': '/analysis/results/', 'icon': '📊'},
+        {'name': 'Рацион', 'url': '/ration/', 'icon': '🥗'},
+    ]
+    
+    # Для админов добавляем панель управления
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        if custom_user.role_id in ['admin', 'superadmin']:
+            items.append({'name': 'Панель управления', 'url': '/dashboard/', 'icon': '🛡️'})
+    except User.DoesNotExist:
+        if hasattr(request.user, 'is_staff') and request.user.is_staff:
+            items.append({'name': 'Панель управления', 'url': '/dashboard/', 'icon': '🛡️'})
+    
+    return {'menu_items': items}
+
+
+
+def user_role(request):
+    """Определяет роль пользователя для шаблона"""
+    if not request.user.is_authenticated:
+        return {'user_role': 'guest'}
+    
+    # Проверяем Django админа
+    if hasattr(request.user, 'is_staff') and request.user.is_staff:
+        return {'user_role': 'admin'}
+    
+    # Проверяем кастомного пользователя
+    try:
+        custom_user = User.objects.get(login=request.user.username)
+        if custom_user.role_id in ['admin', 'superadmin']:
+            return {'user_role': 'admin'}
+    except:
+        pass
+    
+    return {'user_role': 'user'}

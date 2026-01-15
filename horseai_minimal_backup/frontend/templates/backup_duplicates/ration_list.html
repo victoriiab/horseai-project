@@ -1,0 +1,158 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Мои рационы - HorseAI{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>📋 Мои рационы</h1>
+        <p>История всех рассчитанных рационов</p>
+    </div>
+
+    <div class="actions-bar" style="margin-bottom: 30px;">
+        <a href="/ration/" class="btn btn-primary">
+            <span>➕</span>
+            Новый расчет
+        </a>
+    </div>
+
+    <div id="rationsList">
+        <div style="text-align: center; padding: 50px 20px;">
+            <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.5;">📋</div>
+            <p style="color: var(--text-secondary);">Загрузка рационов...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadRations();
+});
+
+function loadRations() {
+    fetch('/api/rations/', {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Получены рационы:', data);
+        renderRations(data);
+    })
+    .catch(error => {
+        console.error('Ошибка загрузки рационов:', error);
+        document.getElementById('rationsList').innerHTML = `
+            <div style="text-align: center; padding: 50px 20px;">
+                <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.5;">❌</div>
+                <h3 style="color: var(--text-secondary); margin-bottom: 15px;">Ошибка загрузки рационов</h3>
+                <p style="color: var(--text-tertiary);">${error.message}</p>
+            </div>
+        `;
+    });
+}
+
+function renderRations(rations) {
+    if (!rations || rations.length === 0) {
+        document.getElementById('rationsList').innerHTML = `
+            <div style="text-align: center; padding: 50px 20px;">
+                <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.5;">🥗</div>
+                <h3 style="color: var(--text-secondary); margin-bottom: 15px;">У вас нет сохраненных рационов</h3>
+                <a href="/ration/" class="btn btn-primary" style="display: inline-flex;">
+                    <span>➕</span>
+                    Создать первый рацион
+                </a>
+            </div>
+        `;
+        return;
+    }
+
+    const html = rations.map(ration => `
+        <div class="ration-card" style="background: var(--bg-card); border-radius: var(--radius); padding: 25px; margin-bottom: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                <div>
+                    <h3 style="margin: 0 0 10px; color: var(--text-primary);">
+                        🐴 ${ration.animal_name || 'Без имени'}
+                    </h3>
+                    <div style="color: var(--text-secondary); font-size: 14px;">
+                        Вес: ${ration.composition?.weight || 0} кг • 
+                        Дата: ${ration.formatted_date}
+                    </div>
+                </div>
+                <div style="background: linear-gradient(135deg, var(--accent), var(--earth)); color: white; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 14px;">
+                    ${ration.composition?.total_cost || '0 руб/месяц'}
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <div style="background: var(--bg-hover); padding: 15px; border-radius: var(--radius);">
+                    <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);">
+                        ${ration.total_dmi?.toFixed(2) || 0}
+                    </div>
+                    <div style="color: var(--text-secondary); font-size: 13px;">Сухого вещества (кг/день)</div>
+                </div>
+                
+                <div style="background: var(--bg-hover); padding: 15px; border-radius: var(--radius);">
+                    <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);">
+                        ${ration.energy_content?.toFixed(1) || 0}
+                    </div>
+                    <div style="color: var(--text-secondary); font-size: 13px;">Энергия (Мкал/день)</div>
+                </div>
+                
+                <div style="background: var(--bg-hover); padding: 15px; border-radius: var(--radius);">
+                    <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);">
+                        ${ration.composition?.hay || '0 кг/день'}
+                    </div>
+                    <div style="color: var(--text-secondary); font-size: 13px;">Сено</div>
+                </div>
+            </div>
+
+            <div style="color: var(--text-secondary); font-size: 14px; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
+                <strong>Хромота:</strong> ${ration.composition?.lameness === 'none' ? 'Нет' : ration.composition?.lameness}
+                ${ration.composition?.lameness !== 'none' ? ` (${ration.composition?.lameness_duration || 'Не указано'})` : ''}
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="viewRation(${ration.ration_id})" class="btn" style="padding: 8px 16px;">
+                    👁️ Подробнее
+                </button>
+                <button onclick="deleteRation(${ration.ration_id})" class="btn" style="padding: 8px 16px; background: var(--bg-hover);">
+                    🗑️ Удалить
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    document.getElementById('rationsList').innerHTML = html;
+}
+
+function viewRation(rationId) {
+    window.location.href = `/ration/${rationId}/`;
+}
+
+function deleteRation(rationId) {
+    if (confirm('Вы уверены, что хотите удалить этот рацион?')) {
+        fetch(`/api/rations/${rationId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Рацион удален');
+                loadRations(); // Перезагружаем список
+            } else {
+                alert('Ошибка при удалении рациона');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка удаления:', error);
+            alert('Ошибка при удалении рациона');
+        });
+    }
+}
+</script>
+{% endblock %}

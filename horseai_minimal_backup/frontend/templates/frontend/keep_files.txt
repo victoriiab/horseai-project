@@ -1,0 +1,11 @@
+base.html
+index.html
+login.html
+register.html
+animals.html
+video_upload.html
+analysis_results.html
+ration.html
+profile.html
+admin_dashboard.html
+super_admin.html

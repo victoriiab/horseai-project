@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель - HorseAI</title>
+    <style>
+        /* Используем те же стили что и в index.html */
+        :root {
+            --bg-dark: #1a1f2b;
+            --bg-darker: #151925;
+            --bg-card: #222736;
+            --bg-hover: #2a3042;
+            --border: #2d3448;
+            --border-light: #3a4158;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --accent: #d97706;
+            --accent-hover: #f59e0b;
+            --accent-light: #fbbf24;
+            --earth: #a16207;
+            --wood: #854d0e;
+            --sage: #65a30d;
+            --stone: #57534e;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            --glow: 0 0 20px rgba(217, 119, 6, 0.15);
+            --radius: 8px;
+            --radius-lg: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            min-height: 100vh;
+            font-size: 14px;
+        }
+
+        /* Навигация */
+        .navbar {
+            background: rgba(26, 31, 43, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            height: 70px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-light);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo::before {
+            content: '🐎';
+            font-size: 20px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .nav-link.active {
+            color: var(--accent-light);
+            background: var(--bg-hover);
+            box-shadow: var(--glow);
+        }
+
+        /* Основной контент */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 24px;
+            min-height: calc(100vh - 70px);
+        }
+
+        /* Карточки */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-light);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        .card-glow {
+            box-shadow: var(--shadow), var(--glow);
+        }
+
+        /* Заголовки */
+        .h1 {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .h2 {
+            font-size: 30px;
+            font-weight: 600;
+            line-height: 1.3;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .h3 {
+            font-size: 24px;
+            font-weight: 600;
+            line-height: 1.4;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .h4 {
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.4;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .text-lg {
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        .text-md {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .text-sm {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .text-xs {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .text-secondary {
+            color: var(--text-secondary);
+        }
+
+        .text-tertiary {
+            color: var(--text-tertiary);
+        }
+
+        .text-accent {
+            color: var(--accent);
+        }
+
+        /* Кнопки */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--accent), var(--earth));
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            height: 44px;
+            box-shadow: var(--shadow);
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg), var(--glow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+            border-color: var(--accent);
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            height: 36px;
+            font-size: 13px;
+        }
+
+        .btn-lg {
+            padding: 16px 32px;
+            height: 52px;
+            font-size: 16px;
+        }
+
+        .btn-blue {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        }
+
+        .btn-blue:hover {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+
+        .btn-green {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+        }
+
+        .btn-green:hover {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+
+        .btn-purple {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+        }
+
+        .btn-purple:hover {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
+        .btn-yellow {
+            background: linear-gradient(135deg, #ca8a04, #a16207);
+        }
+
+        .btn-yellow:hover {
+            background: linear-gradient(135deg, #eab308, #ca8a04);
+        }
+
+        /* Формы */
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+        }
+
+        .textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        /* Сетка */
+        .grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        .grid-cols-1 { grid-template-columns: 1fr; }
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+        /* Статистика */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-hover));
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent);
+            box-shadow: var(--glow);
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent-light);
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Утилиты */
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
+
+        .mb-0 { margin-bottom: 0; }
+        .mb-4 { margin-bottom: 16px; }
+        .mb-8 { margin-bottom: 32px; }
+        .mb-12 { margin-bottom: 48px; }
+
+        .mt-0 { margin-top: 0; }
+        .mt-4 { margin-top: 16px; }
+        .mt-8 { margin-top: 32px; }
+        .mt-12 { margin-top: 48px; }
+
+        .mx-auto { margin-left: auto; margin-right: auto; }
+
+        .w-full { width: 100%; }
+        .w-auto { width: auto; }
+
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-center { justify-content: center; }
+        .gap-4 { gap: 16px; }
+        .gap-6 { gap: 24px; }
+        .gap-8 { gap: 32px; }
+
+        .hidden { display: none; }
+
+        /* Таблицы */
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            font-weight: 600;
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .table tr:hover {
+            background: var(--bg-hover);
+        }
+
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px 16px;
+            }
+
+            .nav-container {
+                padding: 0 16px;
+            }
+
+            .nav-links {
+                gap: 16px;
+            }
+
+            .h1 {
+                font-size: 28px;
+            }
+
+            .h2 {
+                font-size: 24px;
+            }
+
+            .grid-cols-2,
+            .grid-cols-3,
+            .grid-cols-4 {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .nav-links {
+                display: none;
+            }
+            
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="/" class="logo">HorseAI</a>
+        <div class="nav-links">
+            <a href="/" class="nav-link">Главная</a>
+            <a href="/video-upload/" class="nav-link">Загрузка видео</a>
+            <a href="/animals/" class="nav-link">Животные</a>
+            <a href="/analysis/results/" class="nav-link">Анализ</a>
+            <a href="/ration/" class="nav-link">Рационы</a>
+            
+            {% if user.is_authenticated %}
+                <a href="/admin/" class="btn btn-sm btn-blue">Django Admin</a>
+                <a href="/logout/" class="btn btn-sm" style="background: var(--sage);">
+                    {{ user.username }}
+                </a>
+            {% else %}
+                <a href="/login/" class="btn btn-sm" style="background: var(--sage);">
+                    Войти
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+    <main class="container">
+        <!-- Заголовок -->
+        <div class="card card-glow mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="h1 mb-2">🐎 Админ-панель HorseAI</h1>
+                    <p class="text-secondary">Управление системой анализа лошадей</p>
+                </div>
+                <div class="flex gap-4">
+                    <a href="/admin/" class="btn btn-blue">🔧 Django Админка</a>
+                    <a href="/" class="btn btn-secondary">🏠 На главную</a>
+                </div>
+            </div>
+            
+            <!-- Информация о пользователе -->
+            <div class="mb-6 p-4 rounded-lg" style="background: var(--bg-hover); border-left: 4px solid var(--accent);">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h4 class="h4 mb-1">Текущий пользователь: {{ user.username }}</h4>
+                        <p class="text-sm text-secondary">
+                            {% if user.is_superuser %}
+                                🛡️ Суперпользователь
+                            {% else %}
+                                👤 Обычный пользователь
+                            {% endif %}
+                            • Последний вход: сегодня
+                        </p>
+                    </div>
+                    <a href="/logout/" class="btn btn-sm" style="background: #dc3545;">
+                        Выйти
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Статистика и быстрые действия -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Статистика системы -->
+            <div class="card">
+                <h2 class="h2 text-accent mb-6">📊 Статистика системы</h2>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-secondary">Пользователи</span>
+                        <span class="text-lg font-bold">{{ users_count|default:"6" }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-secondary">Животные</span>
+                        <span class="text-lg font-bold">{{ animals_count|default:"9" }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-secondary">Видео</span>
+                        <span class="text-lg font-bold">{{ videos_count|default:"21" }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-secondary">Анализы</span>
+                        <span class="text-lg font-bold">{{ analyses_count|default:"11" }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-secondary">Рационы</span>
+                        <span class="text-lg font-bold">{{ rations_count|default:"5" }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Быстрые действия -->
+            <div class="card">
+                <h2 class="h2 text-accent mb-6">⚡ Быстрые действия</h2>
+                <div class="space-y-4">
+                    <a href="/admin/database/animal/" class="block w-full text-center btn btn-green">
+                        🐎 Управление животными
+                    </a>
+                    <a href="/admin/database/video/" class="block w-full text-center btn btn-blue">
+                        📹 Управление видео
+                    </a>
+                    <a href="/admin/database/analysis/" class="block w-full text-center btn btn-purple">
+                        🔍 Просмотр анализов
+                    </a>
+                    <a href="/admin/auth/user/" class="block w-full text-center btn btn-yellow">
+                        👥 Управление пользователями
+                    </a>
+                </div>
+            </div>
+
+            <!-- Системная информация -->
+            <div class="card">
+                <h2 class="h2 text-accent mb-6">ℹ️ Системная информация</h2>
+                <div class="space-y-4">
+                    <div class="flex justify-between">
+                        <span class="text-secondary">Версия Django:</span>
+                        <span class="font-bold">4.2.25</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-secondary">База данных:</span>
+                        <span class="font-bold">SQLite</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-secondary">Статус:</span>
+                        <span style="color: #65a30d; font-weight: bold;">✅ Активен</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-secondary">Дата сервера:</span>
+                        <span class="font-bold" id="server-date">Загрузка...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Последние данные -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Последние животные -->
+            <div class="card">
+                <h2 class="h2 text-accent mb-6">🆕 Последние животные</h2>
+                <div class="space-y-4">
+                    {% if latest_animals %}
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Имя</th>
+                                        <th>Порода</th>
+                                        <th>Вес</th>
+                                        <th>Возраст</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for animal in latest_animals %}
+                                    <tr>
+                                        <td>{{ animal.animal_name|default:"Без имени" }}</td>
+                                        <td>{{ animal.breed|default:"Не указана" }}</td>
+                                        <td>{{ animal.weight|default:"0" }} кг</td>
+                                        <td>{{ animal.age|default:"0" }} лет</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-8">
+                            <div class="text-4xl mb-4">🐴</div>
+                            <p class="text-secondary">Нет данных о животных</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Последние анализы -->
+            <div class="card">
+                <h2 class="h2 text-accent mb-6">📈 Последние анализы</h2>
+                <div class="space-y-4">
+                    {% if latest_analyses %}
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Анализ</th>
+                                        <th>Хромота</th>
+                                        <th>Вероятность</th>
+                                        <th>Дата</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for analysis in latest_analyses %}
+                                    <tr>
+                                        <td>Анализ #{{ analysis.analysis_id }}</td>
+                                        <td>
+                                            {% if analysis.is_lame %}
+                                                <span style="color: #dc3545;">Да</span>
+                                            {% else %}
+                                                <span style="color: #65a30d;">Нет</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ analysis.lameness_probability|default:"0" }}%</td>
+                                        <td>{{ analysis.analysis_date|date:"d.m.Y"|default:"Неизвестно" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-8">
+                            <div class="text-4xl mb-4">📊</div>
+                            <p class="text-secondary">Нет данных об анализах</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Активное состояние навигации
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+            
+            // Устанавливаем дату сервера
+            document.getElementById('server-date').textContent = new Date().toLocaleDateString('ru-RU');
+            
+            // Загружаем статистику если нет данных
+            fetch('/api/system-stats/')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Статистика dashboard:', data);
+                    console.log('Животных:', data.total_animals);
+                    console.log('Видео:', data.total_videos);
+                    // Обновляем статистику на странице
+                    const statsElements = document.querySelectorAll('.text-lg.font-bold');
+                    if (statsElements.length >= 5) {
+                        statsElements[0].textContent = data.users || '6';
+                        statsElements[1].textContent = data.animals || '9';
+                        statsElements[2].textContent = data.videos || '21';
+                        statsElements[3].textContent = data.analyses || '11';
+                        statsElements[4].textContent = data.rations || '5';
+                    }
+                })
+                .catch(error => console.log('Не удалось загрузить статистику:', error));
+        });
+    </script>
+</body>
+</html>

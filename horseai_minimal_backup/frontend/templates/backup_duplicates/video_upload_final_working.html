@@ -1,0 +1,367 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Загрузка видео - HorseAI{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    <h1 style="color: #333; margin-bottom: 10px;">📹 Загрузка видео для анализа</h1>
+    <p style="color: #666; margin-bottom: 30px;">Загрузите видео лошади для автоматического анализа походки</p>
+    
+    <div style="background: white; border: 1px solid #ddd; border-radius: 10px; padding: 30px; margin-bottom: 20px;">
+        <h2 style="color: #333; margin-bottom: 25px;">Форма загрузки</h2>
+        
+        <form id="uploadForm" enctype="multipart/form-data" style="margin-bottom: 20px;">
+            {% csrf_token %}
+            
+            <!-- Выбор животного -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #555; margin-bottom: 8px; font-weight: 500;">
+                    Выберите животное:
+                </label>
+                <select name="animal_id" id="animalSelect" 
+                        style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px;" required>
+                    <option value="">-- Выберите животное --</option>
+                    {% for animal in animals %}
+                    <option value="{{ animal.animal_id }}">{{ animal.name }} (ID: {{ animal.animal_id }})</option>
+                    {% empty %}
+                    <option value="1">Автоматически созданная лошадь</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Загрузка файла -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #555; margin-bottom: 8px; font-weight: 500;">
+                    Видеофайл:
+                </label>
+                
+                <!-- Кнопка выбора файла -->
+                <div style="text-align: center; margin: 20px 0;">
+                    <button type="button" id="fileSelectBtn" 
+                            style="background: #4CAF50; color: white; border: none; padding: 15px 30px; 
+                                   border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;">
+                        📁 ВЫБРАТЬ ФАЙЛ
+                    </button>
+                    <input type="file" name="video_file" id="videoFile" 
+                           style="display: none;" accept=".mp4,.avi,.mov,.mkv,.txt,.jpg,.png" required>
+                </div>
+                
+                <!-- Информация о файле -->
+                <div id="fileInfo" style="display: none; margin-top: 20px; padding: 15px; 
+                                          background: #f0f9ff; border: 1px solid #b3e0ff; border-radius: 5px;">
+                    <h4 style="margin-top: 0; color: #0066cc;">📄 Выбранный файл:</h4>
+                    <p style="margin: 5px 0;"><strong>Имя:</strong> <span id="fileName"></span></p>
+                    <p style="margin: 5px 0;"><strong>Размер:</strong> <span id="fileSize"></span></p>
+                    <p style="margin: 5px 0; color: #666; font-size: 14px;">
+                        <em>Файл готов к загрузке. Нажмите кнопку ниже.</em>
+                    </p>
+                </div>
+                
+                <!-- Простой drag & drop -->
+                <div id="dropZone" style="border: 2px dashed #4CAF50; border-radius: 10px; padding: 30px; 
+                                          text-align: center; margin: 20px 0; background: #f9f9f9; cursor: pointer;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">⬆️</div>
+                    <p style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #4CAF50;">
+                        ИЛИ ПЕРЕТАЩИТЕ ФАЙЛ СЮДА
+                    </p>
+                    <p style="color: #666; font-size: 14px;">
+                        Поддерживаемые форматы: MP4, AVI, MOV, MKV<br>
+                        Максимальный размер: 500MB
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Информация -->
+            <div style="background: #e8f5e9; border-left: 4px solid #4CAF50; padding: 15px; 
+                        border-radius: 5px; margin: 20px 0;">
+                <p style="margin: 0 0 10px 0; font-weight: bold;">📊 Что анализируется:</p>
+                <ul style="margin: 0 0 0 20px; padding: 0;">
+                    <li>Симметрия походки лошади</li>
+                    <li>Признаки хромоты и аномалий движений</li>
+                    <li>Качество движений и постановка конечностей</li>
+                    <li>Автоматическая генерация отчета</li>
+                </ul>
+            </div>
+            
+            <!-- Кнопка отправки -->
+            <button type="submit" id="submitBtn" 
+                    style="width: 100%; padding: 15px; background: linear-gradient(135deg, #4CAF50, #2E7D32); 
+                           color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; 
+                           cursor: pointer; margin-top: 20px; transition: all 0.3s;">
+                🚀 ЗАПУСТИТЬ АНАЛИЗ ВИДЕО
+            </button>
+        </form>
+        
+        <!-- Прогресс -->
+        <div id="progressSection" style="display: none; margin-top: 30px; padding: 20px; 
+                                         background: #f5f5f5; border-radius: 10px;">
+            <h3 style="margin-bottom: 15px; color: #333;">⏳ Прогресс анализа:</h3>
+            <div style="height: 12px; background: #ddd; border-radius: 6px; overflow: hidden; margin: 20px 0;">
+                <div id="progressFill" style="height: 100%; background: linear-gradient(90deg, #4CAF50, #2E7D32); 
+                                             width: 0%; transition: width 0.5s;"></div>
+            </div>
+            <p id="progressText" style="text-align: center; margin-top: 10px; color: #666; font-weight: 500;">
+                Подготовка к загрузке...
+            </p>
+        </div>
+        
+        <!-- Результаты -->
+        <div id="resultSection" style="display: none; margin-top: 30px; padding: 25px; 
+                                       background: #e8f5e9; border-radius: 10px; border: 2px solid #4CAF50;">
+            <h3 style="color: #2E7D32; margin-bottom: 15px;">✅ АНАЛИЗ ЗАВЕРШЕН!</h3>
+            <div id="resultContent" style="line-height: 1.6;"></div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button onclick="window.location.href='/analysis/results/'" 
+                        style="background: #2E7D32; color: white; border: none; padding: 12px 25px; 
+                               border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer;">
+                    📋 ПЕРЕЙТИ К РЕЗУЛЬТАТАМ
+                </button>
+                <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                    <em>Автоматическое перенаправление через 5 секунд...</em>
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Подсказки -->
+    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 5px;">
+        <p style="margin: 0 0 10px 0; font-weight: bold;">💡 Подсказки:</p>
+        <ul style="margin: 0 0 0 20px; padding: 0;">
+            <li>Для теста можно использовать любой файл (даже .txt)</li>
+            <li>Система создаст животное автоматически если его нет</li>
+            <li>Все загрузки сохраняются в истории анализов</li>
+            <li>После анализа можно рассчитать рацион кормления</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+// ========== ОСНОВНОЙ СКРИПТ ==========
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Страница загрузки видео загружена');
+    
+    // Элементы
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('videoFile');
+    const fileSelectBtn = document.getElementById('fileSelectBtn');
+    const dropZone = document.getElementById('dropZone');
+    const fileInfo = document.getElementById('fileInfo');
+    const submitBtn = document.getElementById('submitBtn');
+    const progressSection = document.getElementById('progressSection');
+    const resultSection = document.getElementById('resultSection');
+    
+    // ========== ВЫБОР ФАЙЛА ==========
+    
+    // 1. Кнопка выбора файла
+    fileSelectBtn.addEventListener('click', function() {
+        console.log('Нажата кнопка выбора файла');
+        fileInput.click();
+    });
+    
+    // 2. Обработка выбора файла
+    fileInput.addEventListener('change', function() {
+        console.log('Файл выбран через input');
+        if (this.files.length > 0) {
+            handleFileSelection(this.files[0]);
+        }
+    });
+    
+    // 3. Drag & Drop
+    dropZone.addEventListener('click', function() {
+        console.log('Нажата зона drag&drop');
+        fileInput.click();
+    });
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            this.style.background = '#e8f5e9';
+            this.style.borderColor = '#2E7D32';
+        }, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            this.style.background = '#f9f9f9';
+            this.style.borderColor = '#4CAF50';
+            
+            if (eventName === 'drop' && e.dataTransfer.files.length > 0) {
+                console.log('Файл перетащен в зону');
+                handleFileSelection(e.dataTransfer.files[0]);
+                fileInput.files = e.dataTransfer.files;
+            }
+        }, false);
+    });
+    
+    // Функция обработки выбранного файла
+    function handleFileSelection(file) {
+        console.log('Обработка файла:', file.name);
+        
+        // Проверка размера
+        if (file.size > 500 * 1024 * 1024) {
+            alert('❌ Файл слишком большой! Максимальный размер: 500MB');
+            fileInput.value = '';
+            return;
+        }
+        
+        // Показываем информацию о файле
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = sizeMB + ' MB';
+        fileInfo.style.display = 'block';
+        
+        // Показываем зону drag&drop меньше
+        dropZone.style.padding = '15px';
+        dropZone.innerHTML = '<p style="color: #4CAF50; font-weight: bold;">✅ Файл выбран</p>' +
+                            '<p style="color: #666; font-size: 14px;">Можно перетащить другой файл</p>';
+        
+        console.log('✅ Файл готов к загрузке:', file.name);
+    }
+    
+    // ========== ОТПРАВКА ФОРМЫ ==========
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        console.log('📤 Начата отправка формы');
+        
+        // Проверка животного
+        const animalSelect = document.getElementById('animalSelect');
+        if (!animalSelect.value) {
+            alert('❌ Пожалуйста, выберите животное из списка');
+            animalSelect.focus();
+            return;
+        }
+        
+        // Проверка файла
+        if (!fileInput.files.length) {
+            alert('❌ Пожалуйста, выберите файл для загрузки');
+            fileSelectBtn.focus();
+            return;
+        }
+        
+        // Подготавливаем UI
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '⏳ ЗАГРУЗКА...';
+        submitBtn.style.background = '#ccc';
+        
+        progressSection.style.display = 'block';
+        document.getElementById('progressFill').style.width = '25%';
+        document.getElementById('progressText').textContent = 'Отправка файла на сервер...';
+        
+        try {
+            // Собираем данные
+            const formData = new FormData(this);
+            
+            // Получаем CSRF токен
+            function getCSRFToken() {
+                const name = 'csrftoken';
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            
+            const csrftoken = getCSRFToken();
+            console.log('CSRF токен:', csrftoken ? 'получен' : 'не найден');
+            
+            // Отправляем запрос
+            const response = await fetch('/api/upload/simple/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrftoken
+                },
+                credentials: 'same-origin'
+            });
+            
+            console.log('📨 Ответ сервера:', response.status);
+            
+            // Проверка авторизации
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('Требуется авторизация. Пожалуйста, войдите в систему.');
+            }
+            
+            // Парсим ответ
+            const data = await response.json();
+            console.log('📊 Данные ответа:', data);
+            
+            if (data.success) {
+                // УСПЕХ
+                document.getElementById('progressFill').style.width = '100%';
+                document.getElementById('progressText').textContent = '✅ Анализ завершен!';
+                
+                // Показываем результаты
+                resultSection.style.display = 'block';
+                document.getElementById('resultContent').innerHTML = `
+                    <div style="background: white; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                        <p><strong>🎯 Результаты анализа:</strong></p>
+                        <p>📹 <strong>Видео ID:</strong> ${data.video_id}</p>
+                        <p>🐴 <strong>Животное:</strong> ${data.animal_name}</p>
+                        <p>📋 <strong>Диагноз:</strong> ${data.diagnosis || 'Норма'}</p>
+                        <p>📈 <strong>Вероятность хромоты:</strong> ${data.lameness_probability || 0}%</p>
+                        <p>⚠️ <strong>Хромота:</strong> ${data.is_lame ? 'ДА (требуется внимание)' : 'НЕТ (все в порядке)'}</p>
+                        ${data.message ? `<p>💬 <strong>Сообщение:</strong> ${data.message}</p>` : ''}
+                    </div>
+                `;
+                
+                // Автоматическое перенаправление
+                setTimeout(() => {
+                    console.log('🔄 Перенаправление на страницу результатов');
+                    window.location.href = '/analysis/results/';
+                }, 5000);
+                
+            } else {
+                // ОШИБКА от сервера
+                throw new Error(data.error || 'Неизвестная ошибка сервера');
+            }
+            
+        } catch (error) {
+            console.error('❌ Ошибка при загрузке:', error);
+            
+            // Восстанавливаем UI
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '🚀 ЗАПУСТИТЬ АНАЛИЗ ВИДЕО';
+            submitBtn.style.background = 'linear-gradient(135deg, #4CAF50, #2E7D32)';
+            
+            progressSection.style.display = 'none';
+            resultSection.style.display = 'none';
+            
+            // Показываем ошибку
+            let errorMessage = error.message;
+            if (errorMessage.includes('авторизация') || errorMessage.includes('401') || errorMessage.includes('403')) {
+                errorMessage = '🔐 Требуется вход в систему. Перенаправляю на страницу входа...';
+                setTimeout(() => {
+                    window.location.href = '/login/';
+                }, 2000);
+            }
+            
+            alert('❌ ОШИБКА:\n' + errorMessage);
+        }
+    });
+    
+    // ========== ИНИЦИАЛИЗАЦИЯ ==========
+    console.log('✅ Страница готова к работе');
+    console.log('Текущий пользователь должен быть авторизован');
+    
+    // Быстрая проверка авторизации
+    fetch('/api/system-stats/', { credentials: 'same-origin' })
+        .then(response => {
+            if (response.ok) {
+                console.log('✅ Пользователь авторизован');
+            } else {
+                console.log('⚠️ Пользователь не авторизован');
+            }
+        })
+        .catch(err => console.log('⚠️ Не удалось проверить авторизацию:', err));
+});
+</script>
+{% endblock %}

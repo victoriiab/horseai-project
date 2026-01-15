@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Простой тест загрузки видео</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .test-area { margin: 30px 0; padding: 20px; border: 2px solid #4CAF50; border-radius: 10px; }
+        h1 { color: #333; }
+        input[type="file"], input[type="text"] { 
+            padding: 10px; margin: 10px 0; width: 100%; max-width: 400px; 
+            border: 1px solid #ddd; border-radius: 5px; 
+        }
+        button { 
+            background: #4CAF50; color: white; border: none; 
+            padding: 12px 24px; font-size: 16px; border-radius: 5px; 
+            cursor: pointer; margin-top: 10px; 
+        }
+        button:hover { background: #45a049; }
+        .result { 
+            margin-top: 20px; padding: 15px; border-radius: 5px; 
+            background: #f9f9f9; border-left: 4px solid #4CAF50; 
+            white-space: pre-wrap; font-family: monospace; 
+        }
+        .success { background: #d4edda; border-left-color: #28a745; }
+        .error { background: #f8d7da; border-left-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <h1>🐴 Тест загрузки видео в HorseAI</h1>
+    <p>Простая форма для тестирования API загрузки видео</p>
+    
+    <div class="test-area">
+        <h2>Endpoint: /api/upload/simple/</h2>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div>
+                <label>Видеофайл (MP4, AVI):</label><br>
+                <input type="file" name="video_file" accept=".mp4,.avi,.mov" required>
+            </div>
+            <div>
+                <label>ID животного:</label><br>
+                <input type="text" name="animal_id" value="1" required>
+            </div>
+            <button type="submit">📤 Загрузить видео</button>
+        </form>
+        <div id="result" class="result"></div>
+    </div>
+    
+    <div class="test-area">
+        <h3>Инструкция:</h3>
+        <ol>
+            <li>Выберите видеофайл с лошадью</li>
+            <li>Укажите ID животного (можно оставить 1)</li>
+            <li>Нажмите "Загрузить видео"</li>
+            <li>При успешной загрузке вы будете перенаправлены на страницу результатов</li>
+        </ol>
+        <p><strong>Тестовое видео:</strong> <code>/home/ais/shared/horseAI/horseai_project/api/uploads/167ba225_healthy_20_mirrored_hhFES5M.mp4</code></p>
+    </div>
+    
+    <script>
+    document.getElementById('uploadForm').onsubmit = async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const resultDiv = document.getElementById('result');
+        const submitBtn = this.querySelector('button[type="submit"]');
+        
+        // Сохраняем исходный текст кнопки
+        const originalBtnText = submitBtn.textContent;
+        submitBtn.textContent = '⏳ Загрузка...';
+        submitBtn.disabled = true;
+        
+        resultDiv.innerHTML = 'Загрузка видео...';
+        resultDiv.className = 'result';
+        
+        try {
+            const response = await fetch('/api/upload/simple/', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                resultDiv.innerHTML = `<strong>✅ Успех!</strong>\n\n` +
+                                     `ID видео: ${data.video_id}\n` +
+                                     `Сообщение: ${data.message}\n` +
+                                     `Путь: ${data.file_path}\n` +
+                                     `Размер: ${(data.file_size / (1024*1024)).toFixed(2)} MB`;
+                resultDiv.className = 'result success';
+                
+                // Перенаправляем через 2 секунды
+                setTimeout(() => {
+                    window.location.href = '/analysis/results/';
+                }, 2000);
+                
+            } else {
+                throw new Error(data.error || 'Неизвестная ошибка');
+            }
+            
+        } catch (error) {
+            resultDiv.innerHTML = `<strong>❌ Ошибка:</strong>\n${error.message}`;
+            resultDiv.className = 'result error';
+            
+        } finally {
+            submitBtn.textContent = originalBtnText;
+            submitBtn.disabled = false;
+        }
+    };
+    
+    // Автозаполнение для теста
+    console.log('Тестовая страница загружена');
+    </script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+from web.database.models import User, Animal, Video, Analysis
+
+def menu_items(request):
+    """
+    Контекст-процессор для меню навигации.
+    Добавляет переменную 'menu_items' во все шаблоны.
+    """
+    # Если пользователь НЕ авторизован - только главная и вход
+    if not request.user.is_authenticated:
+        items = [
+
+            {'name': 'Главная', 'url': '/', 'icon': '🏠'},
+            {'name': 'Войти', 'url': '/login/', 'icon': '🔐'},
+        ]
+        return {'menu_items': items}
+    
+    # Проверяем роль пользователя
+    is_admin = False
+    if request.user.is_authenticated:
+        try:
+            custom_user = User.objects.get(login=request.user.username)
+            is_admin = custom_user.role_id in ['admin', 'superadmin']
+        except User.DoesNotExist:
+            is_admin = hasattr(request.user, 'is_staff') and request.user.is_staff
+    
+    # Если пользователь админ - меню управления
+    if is_admin:
+        items = [
+            {'name': 'Главная', 'url': '/', 'icon': '🏠'},
+            {'name': 'Панель управления', 'url': '/dashboard/', 'icon': '📊'},
+            {'name': 'Админ-панель', 'url': '/admin/', 'icon': '⚙️'},
+        ]
+        return {'menu_items': items}
+    
+    # Если обычный пользователь - полное меню
+    items = [
+        {'name': 'Главная', 'url': '/', 'icon': '🏠'},
+        {'name': 'Мои лошади', 'url': '/animals/', 'icon': '🐴'},
+        {'name': 'Анализ походки', 'url': '/video-upload/', 'icon': '📹'},
+        {'name': 'Результаты', 'url': '/analysis/results/', 'icon': '📊'},
+        {'name': 'Рацион', 'url': '/ration/', 'icon': '🥗'},
+    ]
+    
+    return {'menu_items': items}
+
+
+def user_role(request):
+    """Определяет роль пользователя для шаблона - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    from django.contrib.auth.models import User as DjangoUser
+    from web.database.models import User as CustomUser
+
+    if not request.user.is_authenticated:
+        return {'user_role': 'guest'}
+
+    # Проверяем стандартные Django права
+    if hasattr(request.user, 'is_staff') and request.user.is_staff:
+        return {'user_role': 'admin'}
+    
+    if hasattr(request.user, 'is_superuser') and request.user.is_superuser:
+        return {'user_role': 'admin'}
+
+    # Проверяем кастомного пользователя
+    try:
+        custom_user = CustomUser.objects.get(login=request.user.username)
+        if custom_user.role_id in ['admin', 'superadmin']:
+            return {'user_role': 'admin'}
+        else:
+            return {'user_role': 'user'}
+    except CustomUser.DoesNotExist:
+        # Если нет в кастомной таблице, проверяем Django таблицу
+        try:
+            django_user = DjangoUser.objects.get(username=request.user.username)
+            if django_user.is_staff or django_user.is_superuser:
+                return {'user_role': 'admin'}
+            else:
+                return {'user_role': 'user'}
+        except DjangoUser.DoesNotExist:
+            # Если нет нигде - по умолчанию user
+            return {'user_role': 'user'}

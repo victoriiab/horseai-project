@@ -1,0 +1,242 @@
+{% extends "frontend/base.html" %}
+
+{% block title %}Статус анализа - HorseAI{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-video"></i> Статус анализа видео</h4>
+                </div>
+                <div class="card-body">
+                    <div id="status-container">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary mb-3" role="status" id="loading-spinner">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                            <h5 id="status-message">Инициализация анализа...</h5>
+                            <div class="progress mb-3">
+                                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 10%"></div>
+                            </div>
+                            <p id="status-details" class="text-muted"></p>
+                        </div>
+                    </div>
+                    
+                    <div id="result-container" style="display: none;">
+                        <h5 class="mb-3"><i class="fas fa-clipboard-check"></i> Результаты анализа</h5>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6><i class="fas fa-horse"></i> Диагноз</h6>
+                                        <h3 id="diagnosis-text" class="text-center mt-3"></h3>
+                                        <p id="diagnosis-note" class="text-center text-muted"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6><i class="fas fa-chart-line"></i> Статистика</h6>
+                                        <div class="mt-3">
+                                            <p><strong>Вероятность хромоты:</strong> <span id="lameness-probability"></span>%</p>
+                                            <p><strong>Уверенность анализа:</strong> <span id="confidence-level"></span>%</p>
+                                            <p><strong>Статус:</strong> <span id="analysis-status"></span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="features-container" style="display: none;">
+                            <h6><i class="fas fa-cogs"></i> Биомеханические показатели</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="features-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Показатель</th>
+                                            <th>Значение</th>
+                                            <th>Интерпретация</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <a href="{% url 'analysis_results' %}" class="btn btn-primary">
+                                <i class="fas fa-list"></i> Все результаты
+                            </a>
+                            <a href="{% url 'video_upload' %}" class="btn btn-secondary">
+                                <i class="fas fa-upload"></i> Новый анализ
+                            </a>
+                            <button id="download-report" class="btn btn-success" style="display: none;">
+                                <i class="fas fa-download"></i> Скачать отчет
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="error-container" style="display: none;">
+                        <div class="alert alert-danger">
+                            <h5><i class="fas fa-exclamation-triangle"></i> Ошибка анализа</h5>
+                            <p id="error-message"></p>
+                        </div>
+                        <a href="{% url 'video_upload' %}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left"></i> Вернуться к загрузке
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    const videoId = {{ video_id }};
+    let checkInterval;
+    
+    function updateStatus() {
+        $.ajax({
+            url: `/api/analysis/status/${videoId}/json/`,
+            type: 'GET',
+            success: function(response) {
+                console.log('Status response:', response);
+                
+                if (response.error) {
+                    showError(response.error);
+                    return;
+                }
+                
+                const status = response.analysis_status || 'pending';
+                const message = response.message || 'Анализ в процессе';
+                const progress = response.progress || 10;
+                
+                // Обновляем UI
+                $('#status-message').text(message);
+                $('#progress-bar').css('width', progress + '%');
+                $('#progress-bar').text(progress + '%');
+                
+                if (status === 'completed' && response.result) {
+                    clearInterval(checkInterval);
+                    showResults(response.result);
+                } else if (status === 'failed' || status === 'error') {
+                    clearInterval(checkInterval);
+                    showError(response.error || 'Анализ завершился с ошибкой');
+                } else if (status === 'processing') {
+                    $('#status-details').text('Обработка видео...');
+                }
+            },
+            error: function(xhr) {
+                console.error('Status check error:', xhr);
+                if (xhr.status === 404) {
+                    clearInterval(checkInterval);
+                    showError('Анализ не найден');
+                }
+            }
+        });
+    }
+    
+    function showResults(result) {
+        console.log('Showing results:', result);
+        
+        // Скрываем статус, показываем результаты
+        $('#status-container').hide();
+        $('#result-container').show();
+        
+        // Обновляем данные
+        $('#diagnosis-text').text(result.diagnosis || 'Не определено');
+        $('#diagnosis-note').text(result.diagnosis_note || '');
+        $('#lameness-probability').text(result.lameness_probability || 0);
+        $('#confidence-level').text(result.confidence || 0);
+        $('#analysis-status').text('Завершен');
+        
+        // Добавляем цветовое оформление диагноза
+        const diagnosisText = $('#diagnosis-text');
+        if (result.diagnosis?.includes('Здоровая')) {
+            diagnosisText.addClass('text-success');
+        } else if (result.diagnosis?.includes('Хромая')) {
+            diagnosisText.addClass('text-danger');
+        } else {
+            diagnosisText.addClass('text-warning');
+        }
+        
+        // Показываем кнопку скачивания если есть результат
+        if (result.id) {
+            $('#download-report').show().off('click').on('click', function() {
+                window.location.href = `/analysis/${result.id}/download/`;
+            });
+        }
+        
+        // Показываем показатели если есть
+        if (result.features) {
+            $('#features-container').show();
+            const tableBody = $('#features-table tbody');
+            tableBody.empty();
+            
+            const features = result.features;
+            for (const [key, value] of Object.entries(features)) {
+                let interpretation = '';
+                let valueFormatted = typeof value === 'number' ? value.toFixed(4) : value;
+                
+                // Простая интерпретация
+                if (key.includes('asymmetry')) {
+                    if (value < 0.05) interpretation = 'Норма';
+                    else if (value < 0.1) interpretation = 'Незначительная';
+                    else interpretation = 'Выраженная';
+                } else if (key.includes('sync')) {
+                    if (value > 0.7) interpretation = 'Хорошая';
+                    else if (value > 0.5) interpretation = 'Удовлетворительная';
+                    else interpretation = 'Нарушена';
+                }
+                
+                tableBody.append(`
+                    <tr>
+                        <td>${key.replace(/_/g, ' ')}</td>
+                        <td>${valueFormatted}</td>
+                        <td>${interpretation}</td>
+                    </tr>
+                `);
+            }
+        }
+    }
+    
+    function showError(message) {
+        $('#status-container').hide();
+        $('#error-container').show();
+        $('#error-message').text(message || 'Произошла неизвестная ошибка');
+    }
+    
+    // Начинаем проверку статуса
+    checkInterval = setInterval(updateStatus, 3000);
+    updateStatus(); // Первый запрос сразу
+    
+    // Останавливаем проверку через 5 минут
+    setTimeout(function() {
+        clearInterval(checkInterval);
+        if ($('#status-container').is(':visible')) {
+            showError('Анализ занимает слишком много времени. Попробуйте позже.');
+        }
+    }, 300000);
+});
+</script>
+
+<style>
+.progress {
+    height: 25px;
+}
+.progress-bar {
+    font-size: 14px;
+    line-height: 25px;
+}
+#diagnosis-text {
+    font-size: 2rem;
+    font-weight: bold;
+}
+</style>
+{% endblock %}

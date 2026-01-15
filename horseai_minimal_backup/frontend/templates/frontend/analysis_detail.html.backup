@@ -1,0 +1,1021 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Детали анализа - HorseAI{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Основные стили */
+    .analysis-detail-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+
+    /* Шапка анализа */
+    .analysis-header {
+        background: linear-gradient(135deg, var(--bg-card), #1e2436);
+        border-radius: 20px;
+        padding: 30px;
+        margin-bottom: 40px;
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .analysis-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+    }
+
+    .analysis-title-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .analysis-title {
+        font-size: 32px;
+        font-weight: 800;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .analysis-meta {
+        display: flex;
+        gap: 30px;
+        flex-wrap: wrap;
+    }
+
+    .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .meta-label {
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .meta-value {
+        color: var(--text-primary);
+        font-size: 18px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Статус анализ */
+    .analysis-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 24px;
+        border-radius: 15px;
+        font-size: 16px;
+        font-weight: 700;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .status-healthy {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+    }
+
+    .status-lame {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+    }
+
+    /* Основная сетка */
+    .analysis-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+        gap: 30px;
+        margin-bottom: 40px;
+    }
+
+    @media (max-width: 768px) {
+        .analysis-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Блок видео */
+    .video-section {
+        background: var(--bg-card);
+        border-radius: 20px;
+        padding: 25px;
+        border: 1px solid var(--border);
+    }
+
+    .section-title {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .video-container {
+        position: relative;
+        border-radius: 15px;
+        overflow: hidden;
+        background: var(--bg-dark);
+        margin-bottom: 20px;
+    }
+
+    .video-player {
+        width: 100%;
+        height: 400px;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px;
+    }
+
+    .video-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        margin-top: 15px;
+    }
+
+    .video-info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .video-info-label {
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+
+    .video-info-value {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 15px;
+    }
+
+    .btn-download {
+        padding: 10px 20px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-download:hover {
+        background: var(--accent-hover);
+        transform: translateY(-2px);
+    }
+
+    /* Блок отчетов */
+    .reports-section {
+        background: var(--bg-card);
+        border-radius: 20px;
+        padding: 25px;
+        border: 1px solid var(--border);
+    }
+
+    .report-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 25px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 15px;
+    }
+
+    .report-tab {
+        padding: 12px 24px;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+
+    .report-tab:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+    }
+
+    .report-tab.active {
+        background: var(--accent);
+        color: white;
+    }
+
+    .report-content {
+        min-height: 300px;
+        max-height: 500px;
+        overflow-y: auto;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .text-report {
+        color: var(--text-primary);
+        line-height: 1.6;
+        white-space: pre-wrap;
+        font-family: 'Monaco', 'Consolas', monospace;
+        font-size: 14px;
+    }
+
+    .graphic-report {
+        width: 100%;
+        height: auto;
+        border-radius: 10px;
+        background: white;
+    }
+
+    /* Блок метрик */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 25px;
+        margin-bottom: 40px;
+    }
+
+    .metric-card {
+        background: var(--bg-card);
+        border-radius: 18px;
+        padding: 25px;
+        border: 1px solid var(--border);
+        transition: all 0.3s ease;
+    }
+
+    .metric-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .metric-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .metric-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .metric-value {
+        font-size: 36px;
+        font-weight: 800;
+        color: var(--accent-light);
+        margin-bottom: 10px;
+        line-height: 1;
+    }
+
+    .metric-description {
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    /* Прогресс бары */
+    .progress-bar {
+        height: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+        overflow: hidden;
+        margin: 15px 0;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 5px;
+        transition: width 0.6s ease;
+    }
+
+    .progress-healthy {
+        background: linear-gradient(90deg, #10b981, #34d399);
+    }
+
+    .progress-lame {
+        background: linear-gradient(90deg, #ef4444, #fca5a5);
+    }
+
+    .confidence-indicator {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-top: 10px;
+    }
+
+    .confidence-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    .confidence-high { background: #10b981; }
+    .confidence-medium { background: #f59e0b; }
+    .confidence-low { background: #ef4444; }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* Блок действий */
+    .actions-section {
+        background: var(--bg-card);
+        border-radius: 20px;
+        padding: 30px;
+        border: 1px solid var(--border);
+        margin-top: 40px;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .action-button {
+        padding: 20px;
+        border: 2px solid var(--border);
+        border-radius: 15px;
+        background: transparent;
+        color: var(--text-primary);
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .action-button:hover {
+        border-color: var(--accent);
+        background: rgba(217, 119, 6, 0.1);
+        transform: translateY(-3px);
+    }
+
+    .action-button.delete:hover {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+        color: #fca5a5;
+    }
+
+    .action-icon {
+        font-size: 32px;
+    }
+
+    /* Адаптивность */
+    @media (max-width: 1024px) {
+        .analysis-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .analysis-title {
+            font-size: 24px;
+        }
+        
+        .analysis-meta {
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .video-player {
+            height: 300px;
+        }
+        
+        .metrics-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .report-tabs {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding-bottom: 10px;
+        }
+        
+        .report-tab {
+            white-space: nowrap;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .analysis-detail-container {
+            padding: 0 15px;
+        }
+        
+        .analysis-header,
+        .video-section,
+        .reports-section,
+        .metric-card,
+        .actions-section {
+            padding: 20px;
+        }
+        
+        .video-player {
+            height: 250px;
+        }
+        
+        .video-info {
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analysis-detail-container">
+    <!-- Шапка анализа -->
+    <div class="analysis-header">
+        <div class="analysis-title-section">
+            <div>
+                <h1 class="analysis-title">
+                    <span>🔍</span>
+                    Анализ походки
+                </h1>
+                <div class="analysis-meta" id="analysisMeta">
+                    <!-- Заполнится JavaScript -->
+                </div>
+            </div>
+            <div id="analysisStatus" class="analysis-status">
+                <!-- Заполнится JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Метрики -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-header">
+                <h3 class="metric-title">
+                    <span>🎯</span>
+                    Вероятность хромоты
+                </h3>
+            </div>
+            <div class="metric-value" id="lamenessProbability">0%</div>
+            <div class="progress-bar">
+                <div class="progress-fill progress-lame" id="probabilityBar" style="width: 0%"></div>
+            </div>
+            <div class="metric-description" id="probabilityDescription">
+                Вероятность наличия хромоты у лошади
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-header">
+                <h3 class="metric-title">
+                    <span>📊</span>
+                    Уверенность анализа
+                </h3>
+            </div>
+            <div class="metric-value" id="analysisConfidence">0%</div>
+            <div class="confidence-indicator">
+                <div class="confidence-dot confidence-high" id="confidenceDot"></div>
+                <div class="metric-description" id="confidenceDescription">
+                    Уверенность модели в результате
+                </div>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-header">
+                <h3 class="metric-title">
+                    <span>⚙️</span>
+                    Детали модели
+                </h3>
+            </div>
+            <div class="metric-value" id="modelInfo">SuperAnimal</div>
+            <div class="metric-description">
+                Использованная ML модель для анализа
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-header">
+                <h3 class="metric-title">
+                    <span>⏱️</span>
+                    Время обработки
+                </h3>
+            </div>
+            <div class="metric-value" id="processingTime">0 сек</div>
+            <div class="metric-description">
+                Время анализа видео моделью
+            </div>
+        </div>
+    </div>
+
+    <!-- Видео и отчеты -->
+    <div class="analysis-grid">
+        <!-- Блок видео -->
+        <div class="video-section">
+            <h2 class="section-title">
+                <span>🎬</span>
+                Видео материалы
+            </h2>
+            
+            <!-- Оригинальное видео -->
+            <div class="video-block">
+                <h3 style="font-size: 16px; color: var(--text-secondary); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                    <span>🎥</span>
+                    Оригинальное видео
+                </h3>
+                <div class="video-container">
+                    <div class="video-player" id="originalVideoPlayer">
+                        <!-- Видео появится через JavaScript -->
+                    </div>
+                </div>
+                <div class="video-info">
+                    <div class="video-info-item">
+                        <span class="video-info-label">Формат</span>
+                        <span class="video-info-value" id="originalFormat">MP4</span>
+                    </div>
+                    <div class="video-info-item">
+                        <span class="video-info-label">Размер</span>
+                        <span class="video-info-value" id="originalSize">0 MB</span>
+                    </div>
+                    <button class="btn-download" onclick="downloadFile('original')">
+                        <span>⬇️</span>
+                        Скачать оригинал
+                    </button>
+                </div>
+            </div>
+
+            <!-- Размеченное видео -->
+            <div class="video-block" style="margin-top: 30px;">
+                <h3 style="font-size: 16px; color: var(--text-secondary); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                    <span>🎯</span>
+                    Видео с разметкой ML
+                </h3>
+                <div class="video-container">
+                    <div class="video-player" id="annotatedVideoPlayer">
+                        <!-- Видео появится через JavaScript -->
+                    </div>
+                </div>
+                <div class="video-info">
+                    <div class="video-info-item">
+                        <span class="video-info-label">Тип разметки</span>
+                        <span class="video-info-value">Ключевые точки</span>
+                    </div>
+                    <div class="video-info-item">
+                        <span class="video-info-label">Модель</span>
+                        <span class="video-info-value">SuperAnimal Quadruped</span>
+                    </div>
+                    <button class="btn-download" onclick="downloadFile('annotated')">
+                        <span>⬇️</span>
+                        Скачать с разметкой
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок отчетов -->
+        <div class="reports-section">
+            <h2 class="section-title">
+                <span>📋</span>
+                Отчеты анализа
+            </h2>
+            
+            <div class="report-tabs">
+                <button class="report-tab active" onclick="switchReport('text')">
+                    Текстовый отчет
+                </button>
+                <button class="report-tab" onclick="switchReport('graphic')">
+                    Графический отчет
+                </button>
+                <button class="report-tab" onclick="switchReport('data')">
+                    Данные поз
+                </button>
+            </div>
+            
+            <div class="report-content">
+                <div id="textReport" class="text-report">
+                    <!-- Текстовый отчет загрузится через JavaScript -->
+                </div>
+                <div id="graphicReport" class="report-content" style="display: none;">
+                    <img id="graphicReportImage" class="graphic-report" src="" alt="Графический отчет">
+                </div>
+                <div id="dataReport" class="text-report" style="display: none;">
+                    <!-- Данные поз загрузится через JavaScript -->
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap;">
+                <button class="btn-download" onclick="downloadReport('text')">
+                    <span>📄</span>
+                    Скачать текстовый отчет
+                </button>
+                <button class="btn-download" onclick="downloadReport('graphic')">
+                    <span>📊</span>
+                    Скачать графику
+                </button>
+                <button class="btn-download" onclick="downloadReport('data')">
+                    <span>📊</span>
+                    Скачать данные поз
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Действия -->
+    <div class="actions-section">
+        <h2 class="section-title">
+            <span>⚡</span>
+            Действия
+        </h2>
+        <div class="actions-grid">
+            <button class="action-button" onclick="window.history.back()">
+                <span class="action-icon">←</span>
+                Вернуться к списку
+            </button>
+            <button class="action-button" onclick="shareAnalysis()">
+                <span class="action-icon">📤</span>
+                Поделиться результатом
+            </button>
+            <button class="action-button" onclick="printReport()">
+                <span class="action-icon">🖨️</span>
+                Распечатать отчет
+            </button>
+            <button class="action-button delete" onclick="deleteAnalysis()">
+                <span class="action-icon">🗑️</span>
+                Удалить анализ
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Глобальные переменные
+let analysisData = null;
+let analysisId = null;
+
+// Вспомогательные функции
+function getCSRFToken() {
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    return csrfInput ? csrfInput.value : '';
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    const icon = type === 'success' ? '✅' : '❌';
+    toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+    
+    const oldToast = document.querySelector('.toast');
+    if (oldToast) oldToast.remove();
+    
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Загрузка данных анализа
+async function loadAnalysisData() {
+    try {
+        // Получаем ID из URL
+        const path = window.location.pathname;
+        const match = path.match(/\/analysis\/(\d+)\//);
+        if (!match) {
+            throw new Error('ID анализа не найден в URL');
+        }
+        
+        analysisId = match[1];
+        console.log(`Загружаем анализ ID: ${analysisId}`);
+        
+        // Загружаем данные анализа
+        const response = await fetch(`/api/analysis/${analysisId}/detail/`);
+        if (!response.ok) {
+            throw new Error(`HTTP ошибка: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Данные анализа:', data);
+        
+        if (data.success && data.analysis) {
+            analysisData = data.analysis;
+            renderAnalysis();
+        } else {
+            throw new Error(data.error || 'Ошибка загрузки данных');
+        }
+        
+    } catch (error) {
+        console.error('Ошибка загрузки анализа:', error);
+        showToast('Ошибка загрузки данных анализа', 'error');
+        
+        // Показываем сообщение об ошибке
+        document.querySelector('.analysis-detail-container').innerHTML = `
+            <div style="text-align: center; padding: 100px 20px;">
+                <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                <h2 style="color: var(--text-primary); margin-bottom: 15px;">Ошибка загрузки анализа</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 30px;">${error.message}</p>
+                <button onclick="window.history.back()" style="padding: 12px 24px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer;">
+                    Вернуться назад
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Отображение данных анализа
+function renderAnalysis() {
+    if (!analysisData) return;
+    
+    // Шапка анализа
+    document.getElementById('analysisMeta').innerHTML = `
+        <div class="meta-item">
+            <span class="meta-label">Лошадь</span>
+            <span class="meta-value">
+                <span>🐴</span>
+                ${analysisData.animal_name || 'Неизвестно'}
+            </span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Дата анализа</span>
+            <span class="meta-value">
+                <span>📅</span>
+                ${new Date(analysisData.analysis_date || analysisData.created_at).toLocaleDateString('ru-RU')}
+            </span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Видео</span>
+            <span class="meta-value">
+                <span>🎥</span>
+                ${analysisData.video_filename || 'Без названия'}
+            </span>
+        </div>
+    `;
+    
+    // Статус
+    const statusElement = document.getElementById('analysisStatus');
+    if (analysisData.is_lame) {
+        statusElement.className = 'analysis-status status-lame';
+        statusElement.innerHTML = '<span>⚠️</span> Обнаружена хромота';
+    } else {
+        statusElement.className = 'analysis-status status-healthy';
+        statusElement.innerHTML = '<span>✅</span> Здоровая походка';
+    }
+    
+    // Метрики
+    const probability = analysisData.lameness_probability || 0;
+    const confidence = analysisData.lameness_confidence || analysisData.confidence_score || 0;
+    
+    document.getElementById('lamenessProbability').textContent = `${probability.toFixed(1)}%`;
+    document.getElementById('probabilityBar').style.width = `${probability}%`;
+    
+    let probabilityDescription = 'Низкая вероятность хромоты';
+    if (probability > 70) probabilityDescription = 'Высокая вероятность хромоты';
+    else if (probability > 30) probabilityDescription = 'Средняя вероятность хромоты';
+    document.getElementById('probabilityDescription').textContent = probabilityDescription;
+    
+    document.getElementById('analysisConfidence').textContent = `${confidence.toFixed(1)}%`;
+    
+    const confidenceDot = document.getElementById('confidenceDot');
+    if (confidence > 70) {
+        confidenceDot.className = 'confidence-dot confidence-high';
+    } else if (confidence > 40) {
+        confidenceDot.className = 'confidence-dot confidence-medium';
+    } else {
+        confidenceDot.className = 'confidence-dot confidence-low';
+    }
+    
+    let confidenceDescription = 'Высокая уверенность';
+    if (confidence < 40) confidenceDescription = 'Низкая уверенность';
+    else if (confidence < 70) confidenceDescription = 'Средняя уверенность';
+    document.getElementById('confidenceDescription').textContent = confidenceDescription;
+    
+    // Видео
+    if (analysisData.video_path) {
+        document.getElementById('originalVideoPlayer').innerHTML = `
+            <video controls style="width: 100%; height: 100%; object-fit: contain;">
+                <source src="${analysisData.video_path}" type="video/mp4">
+                Ваш браузер не поддерживает видео.
+            </video>
+        `;
+    }
+    
+    if (analysisData.annotated_video_path) {
+        document.getElementById('annotatedVideoPlayer').innerHTML = `
+            <video controls style="width: 100%; height: 100%; object-fit: contain;">
+                <source src="${analysisData.annotated_video_path}" type="video/mp4">
+                Ваш браузер не поддерживает видео.
+            </video>
+        `;
+    }
+    
+    // Загружаем отчеты
+    loadReports();
+}
+
+// Загрузка отчетов
+async function loadReports() {
+    try {
+        // Текстовый отчет
+        if (analysisData.text_report_path) {
+            const response = await fetch(analysisData.text_report_path);
+            if (response.ok) {
+                const text = await response.text();
+                document.getElementById('textReport').textContent = text;
+            }
+        }
+        
+        // Графический отчет
+        if (analysisData.graphic_report_path) {
+            document.getElementById('graphicReportImage').src = analysisData.graphic_report_path;
+        }
+        
+        // Данные поз (H5 файл - показываем метаинформацию)
+        if (analysisData.pose_data_path) {
+            document.getElementById('dataReport').textContent = 
+                `Файл данных поз: ${analysisData.pose_data_path}\n\n` +
+                `Размер: ${analysisData.pose_data_size || 'Неизвестно'}\n` +
+                `Тип: HDF5 (H5)\n` +
+                `Модель: SuperAnimal Quadruped HRNet W32\n` +
+                `Содержит: Координаты ключевых точек, уверенность, временные метки`;
+        }
+        
+    } catch (error) {
+        console.error('Ошибка загрузки отчетов:', error);
+        document.getElementById('textReport').textContent = 'Ошибка загрузки отчета';
+    }
+}
+
+// Переключение между отчетами
+function switchReport(type) {
+    // Обновляем активные табы
+    document.querySelectorAll('.report-tab').forEach(tab => tab.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Показываем выбранный контент
+    document.getElementById('textReport').style.display = type === 'text' ? 'block' : 'none';
+    document.getElementById('graphicReport').style.display = type === 'graphic' ? 'block' : 'none';
+    document.getElementById('dataReport').style.display = type === 'data' ? 'block' : 'none';
+}
+
+// Скачивание файлов
+function downloadFile(type) {
+    if (!analysisData) return;
+    
+    let url;
+    let filename;
+    
+    if (type === 'original') {
+        url = analysisData.video_path;
+        filename = analysisData.video_filename || 'original_video.mp4';
+    } else if (type === 'annotated') {
+        url = analysisData.annotated_video_path;
+        filename = (analysisData.video_filename || 'video') + '_annotated.mp4';
+    }
+    
+    if (url) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } else {
+        showToast('Файл не найден', 'error');
+    }
+}
+
+function downloadReport(type) {
+    if (!analysisData) return;
+    
+    let url;
+    let filename;
+    
+    if (type === 'text') {
+        url = analysisData.text_report_path;
+        filename = (analysisData.video_filename || 'analysis') + '_report.txt';
+    } else if (type === 'graphic') {
+        url = analysisData.graphic_report_path;
+        filename = (analysisData.video_filename || 'analysis') + '_graphic.png';
+    } else if (type === 'data') {
+        url = analysisData.pose_data_path;
+        filename = (analysisData.video_filename || 'analysis') + '_pose_data.h5';
+    }
+    
+    if (url) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } else {
+        showToast('Отчет не найден', 'error');
+    }
+}
+
+// Удаление анализа
+async function deleteAnalysis() {
+    if (!analysisData || !confirm('Вы уверены, что хотите удалить этот анализ?\nЭто действие нельзя отменить.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/analysis/${analysisId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Анализ удален', 'success');
+            setTimeout(() => {
+                window.location.href = '/analysis/results/';
+            }, 1000);
+        } else {
+            showToast(data.error || 'Ошибка удаления', 'error');
+        }
+    } catch (error) {
+        console.error('Ошибка удаления:', error);
+        showToast('Ошибка сети', 'error');
+    }
+}
+
+// Дополнительные функции
+function shareAnalysis() {
+    if (navigator.share) {
+        navigator.share({
+            title: `Анализ походки: ${analysisData.animal_name || 'Лошадь'}`,
+            text: `Вероятность хромоты: ${analysisData.lameness_probability || 0}%`,
+            url: window.location.href
+        });
+    } else {
+        navigator.clipboard.writeText(window.location.href);
+        showToast('Ссылка скопирована в буфер обмена', 'success');
+    }
+}
+
+function printReport() {
+    window.print();
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', loadAnalysisData);
+</script>
+{% endblock %}

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Рационы лошадей</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .ration-card { 
+            border: 1px solid #ddd; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .ration-header { 
+            background: #4CAF50; 
+            color: white; 
+            padding: 10px; 
+            border-radius: 3px;
+            margin-bottom: 10px;
+        }
+        .composition-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .btn {
+            display: inline-block;
+            padding: 8px 15px;
+            background: #2196F3;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+            margin: 5px;
+        }
+        .btn:hover { background: #0b7dda; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Рационы кормления лошадей</h1>
+        
+        <div id="rations-list">
+            <p>Загрузка рационов...</p>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <a href="/" class="btn">На главную</a>
+            <a href="/ration/" class="btn">Мои рационы</a>
+        </div>
+    </div>
+
+    <script>
+        // Загружаем рационы через API
+        async function loadRations() {
+            try {
+                const response = await fetch('/api/rations/');
+                const rations = await response.json();
+                
+                const container = document.getElementById('rations-list');
+                container.innerHTML = '';
+                
+                if (rations.length === 0) {
+                    container.innerHTML = '<p>Нет рационов</p>';
+                    return;
+                }
+                
+                rations.forEach(ration => {
+                    const card = document.createElement('div');
+                    card.className = 'ration-card';
+                    
+                    // Форматируем дату
+                    const date = new Date(ration.calculation_date);
+                    const dateStr = date.toLocaleDateString('ru-RU');
+                    
+                    // Парсим composition если это строка
+                    let composition = ration.composition;
+                    if (typeof composition === 'string') {
+                        try {
+                            composition = JSON.parse(composition);
+                        } catch (e) {
+                            composition = {};
+                        }
+                    }
+                    
+                    card.innerHTML = `
+                        <div class="ration-header">
+                            <h3>Рацион #${ration.ration_id} - ${ration.animal_name || 'Животное'}</h3>
+                            <small>Дата расчета: ${dateStr}</small>
+                        </div>
+                        
+                        <div>
+                            <p><strong>DMI:</strong> ${ration.total_dmi} кг/день</p>
+                            <p><strong>Энергия:</strong> ${ration.energy_content} МДж/день</p>
+                        </div>
+                        
+                        <div>
+                            <h4>Состав рациона:</h4>
+                            ${Object.entries(composition).map(([key, value]) => 
+                                `<div class="composition-item">
+                                    <span>${key}:</span>
+                                    <span><strong>${value} кг</strong></span>
+                                </div>`
+                            ).join('')}
+                        </div>
+                        
+                        <div style="margin-top: 10px;">
+                            <a href="/api/rations/${ration.ration_id}/" class="btn" target="_blank">JSON API</a>
+                            <button onclick="calculateNewRation(${ration.animal_id})" class="btn">Новый расчет</button>
+                        </div>
+                    `;
+                    
+                    container.appendChild(card);
+                });
+                
+            } catch (error) {
+                document.getElementById('rations-list').innerHTML = 
+                    `<p style="color: red;">Ошибка загрузки: ${error.message}</p>`;
+            }
+        }
+        
+        function calculateNewRation(animalId) {
+            if (confirm('Рассчитать новый рацион для этого животного?')) {
+                // Здесь можно добавить логику расчета нового рациона
+                alert(`Будет рассчитан новый рацион для животного ID: ${animalId}`);
+                // window.location.href = `/ration/calculate/?animal_id=${animalId}`;
+            }
+        }
+        
+        // Загружаем при старте
+        document.addEventListener('DOMContentLoaded', loadRations);
+    </script>
+</body>
+</html>

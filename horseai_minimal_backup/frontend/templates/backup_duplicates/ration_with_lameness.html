@@ -1,0 +1,531 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Расчет рациона - HorseAI{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Все стили из предыдущей версии + новые */
+    
+    .lameness-alert {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.2));
+        border: 2px solid #ef4444;
+        border-radius: var(--radius);
+        padding: 25px;
+        margin: 20px 0;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { border-color: #ef4444; }
+        50% { border-color: #f87171; }
+        100% { border-color: #ef4444; }
+    }
+    
+    .lameness-icon {
+        font-size: 24px;
+        margin-right: 10px;
+    }
+    
+    .rehab-supplements {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.2));
+        border: 1px solid #22c55e;
+        border-radius: var(--radius);
+        padding: 25px;
+        margin-top: 20px;
+    }
+    
+    .supplement-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+    
+    .supplement-item {
+        background: var(--bg-dark);
+        border-radius: var(--radius);
+        padding: 15px;
+        text-align: center;
+    }
+    
+    .supplement-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 5px;
+    }
+    
+    .supplement-dose {
+        color: var(--accent);
+        font-size: 14px;
+    }
+    
+    /* Остальные стили... */
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ration-container">
+    <div class="page-header">
+        <h1 class="page-title">Расчет рациона</h1>
+        <p class="page-subtitle">
+            Рассчитайте оптимальный рацион питания для вашей лошади
+        </p>
+    </div>
+
+    <!-- Проверка на хромоту -->
+    <div id="lamenessCheck" style="display: none;">
+        <div class="lameness-alert">
+            <h3 style="color: #ef4444; margin-bottom: 15px; display: flex; align-items: center;">
+                <span class="lameness-icon">⚠️</span>
+                Обнаружена хромота!
+            </h3>
+            <p style="color: var(--text-primary); margin-bottom: 15px;">
+                У этой лошади обнаружены признаки хромоты. Рекомендуется специальный рацион для восстановления.
+            </p>
+            <div style="display: flex; gap: 15px;">
+                <button class="wizard-btn" onclick="useNormalDiet()">
+                    <span>🐴</span>
+                    Использовать обычный рацион
+                </button>
+                <button class="wizard-btn primary" onclick="useRehabDiet()">
+                    <span>🏥</span>
+                    Использовать реабилитационный рацион
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Мастер расчета (остается как было, но с дополнительным шагом) -->
+    <div class="ration-wizard">
+        <div class="wizard-steps">
+            <div class="wizard-step active" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-label">Выбор лошади</div>
+            </div>
+            <div class="wizard-step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-label">Параметры</div>
+            </div>
+            <div class="wizard-step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-label">Активность</div>
+            </div>
+            <div class="wizard-step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-label">Стоимость</div>
+            </div>
+            <div class="wizard-step" id="step5">
+                <div class="step-number">5</div>
+                <div class="step-label">Результат</div>
+            </div>
+        </div>
+
+        <!-- Шаг 1: Выбор лошади -->
+        <div class="wizard-content active" id="step1Content">
+            <h2 class="step-title">🐴 Выберите лошадь</h2>
+
+            {% if animals %}
+                <div class="animal-cards" id="animalCards">
+                    {% for animal in animals %}
+                    <div class="animal-card-select" 
+                         data-animal-id="{{ animal.animal_id }}"
+                         data-is-lame="{{ animal.has_lameness|default:'false' }}"
+                         data-lameness-severity="{{ animal.lameness_severity|default:'0' }}">
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                            <div style="width: 60px; height: 60px; border-radius: 50%; 
+                                        {% if animal.has_lameness %}
+                                            background: linear-gradient(135deg, #ef4444, #dc2626);
+                                        {% else %}
+                                            background: linear-gradient(135deg, var(--accent), var(--earth));
+                                        {% endif %}
+                                        display: flex; align-items: center; justify-content: center; 
+                                        font-size: 24px; color: white; font-weight: 600;">
+                                {{ animal.name|first|upper }}
+                            </div>
+                            <div>
+                                <h3 style="margin: 0; color: var(--text-primary);">
+                                    {{ animal.name|default:"Без имени" }}
+                                    {% if animal.has_lameness %}
+                                        <span style="color: #ef4444; font-size: 14px; margin-left: 10px;">⚠️ Хромота</span>
+                                    {% endif %}
+                                </h3>
+                                <p style="margin: 5px 0 0; color: var(--text-secondary); font-size: 14px;">
+                                    {% if animal.age %}{{ animal.age }} лет{% endif %}
+                                    {% if animal.estimated_weight %} • {{ animal.estimated_weight }} кг{% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="wizard-actions">
+                    <div></div>
+                    <button class="wizard-btn primary" onclick="nextStep()">
+                        Далее →
+                    </button>
+                </div>
+            {% else %}
+                <div style="text-align: center; padding: 40px 20px;">
+                    <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.5;">🐴</div>
+                    <h3 style="color: var(--text-secondary); margin-bottom: 15px;">У вас нет лошадей</h3>
+                    <a href="/animals/" class="wizard-btn primary" style="display: inline-flex;">
+                        <span>➕</span>
+                        Добавить лошадь
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Остальные шаги остаются как в предыдущей версии... -->
+        <!-- Шаг 2: Параметры -->
+        <div class="wizard-content" id="step2Content">
+            <h2 class="step-title">📏 Физические параметры</h2>
+
+            <!-- Добавляем чекбокс для ручного указания хромоты -->
+            <div style="margin-bottom: 25px; padding: 20px; background: var(--bg-hover); border-radius: var(--radius);">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+                    <input type="checkbox" id="lamenessCheckbox" style="width: 20px; height: 20px;">
+                    <label for="lamenessCheckbox" style="color: var(--text-primary); font-weight: 600;">
+                        🩺 У лошади есть признаки хромоты
+                    </label>
+                </div>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-left: 35px;">
+                    Если отмечено, будет рассчитан специальный реабилитационный рацион
+                </p>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Вес (кг)</label>
+                    <input type="number" id="weightInput" class="form-input" value="520" min="100" max="1000">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Рост (см)</label>
+                    <input type="number" id="heightInput" class="form-input" value="160" min="80" max="200">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Порода</label>
+                    <select id="breedSelect" class="form-select">
+                        <option value="light">Легкая</option>
+                        <option value="medium" selected>Средняя</option>
+                        <option value="heavy">Тяжелая</option>
+                        <option value="pony">Пони</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Состояние тела</label>
+                    <select id="bodyConditionSelect" class="form-select">
+                        <option value="thin">Худое</option>
+                        <option value="normal" selected>Нормальное</option>
+                        <option value="overweight">Полное</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="wizard-actions">
+                <button class="wizard-btn" onclick="prevStep()">
+                    ← Назад
+                </button>
+                <button class="wizard-btn primary" onclick="nextStep()">
+                    Далее →
+                </button>
+            </div>
+        </div>
+
+        <!-- Шаги 3-4 остаются без изменений... -->
+        <!-- Шаг 5: Результат с добавлениями для реабилитации -->
+        
+    </div>
+
+    <!-- Результаты расчета с блоком для реабилитации -->
+    <div class="ration-result" id="rationResult">
+        <!-- Заголовок и основная информация... -->
+        
+        <!-- НОВЫЙ БЛОК: Реабилитационные добавки (показывается только при хромоте) -->
+        <div class="rehab-supplements" id="rehabSupplements" style="display: none;">
+            <h4 style="color: #22c55e; font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                <span>🏥</span>
+                Реабилитационные добавки (рекомендуются при хромоте)
+            </h4>
+            
+            <div class="supplement-grid" id="supplementsGrid">
+                <!-- Добавки будут добавлены через JavaScript -->
+            </div>
+            
+            <p style="color: var(--text-secondary); font-size: 14px; margin-top: 15px;">
+                💡 Эти добавки помогут ускорить восстановление суставов и уменьшить воспаление
+            </p>
+        </div>
+        
+        <!-- Остальные блоки (стоимость, рекомендации и т.д.)... -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Флаг хромоты
+let hasLameness = false;
+let selectedAnimalId = null;
+let currentStep = 1;
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработчики выбора животного
+    const animalCards = document.querySelectorAll('.animal-card-select');
+    animalCards.forEach(card => {
+        card.addEventListener('click', function() {
+            // Снимаем выделение со всех карточек
+            animalCards.forEach(c => c.classList.remove('selected'));
+            // Выделяем выбранную
+            this.classList.add('selected');
+            selectedAnimalId = this.dataset.animalId;
+            
+            // Проверяем есть ли данные о хромоте
+            const isLame = this.dataset.isLame === 'true';
+            const lamenessSeverity = parseFloat(this.dataset.lamenessSeverity) || 0;
+            
+            if (isLame && lamenessSeverity > 0) {
+                hasLameness = true;
+                // Показываем предупреждение о хромоте
+                document.getElementById('lamenessCheck').style.display = 'block';
+                document.getElementById('lamenessCheckbox').checked = true;
+            } else {
+                hasLameness = false;
+                document.getElementById('lamenessCheck').style.display = 'none';
+                document.getElementById('lamenessCheckbox').checked = false;
+            }
+        });
+    });
+
+    // Выбираем первое животное по умолчанию
+    if (animalCards.length > 0) {
+        animalCards[0].click();
+    }
+    
+    // Обработчик чекбокса хромоты
+    document.getElementById('lamenessCheckbox').addEventListener('change', function() {
+        hasLameness = this.checked;
+    });
+});
+
+// Использовать обычный рацион
+function useNormalDiet() {
+    hasLameness = false;
+    document.getElementById('lamenessCheck').style.display = 'none';
+    document.getElementById('lamenessCheckbox').checked = false;
+}
+
+// Использовать реабилитационный рацион
+function useRehabDiet() {
+    hasLameness = true;
+    document.getElementById('lamenessCheck').style.display = 'none';
+    document.getElementById('lamenessCheckbox').checked = true;
+}
+
+// Расчет рациона с учетом хромоты
+function calculateRation() {
+    // Собираем данные (как раньше)...
+    const weight = parseFloat(document.getElementById('weightInput').value) || 500;
+    const activity = document.getElementById('workloadSelect').value;
+    const health = document.getElementById('healthSelect').value;
+    const breed = document.getElementById('breedSelect').value;
+    const goal = document.getElementById('goalSelect').value;
+    
+    // Собираем цены...
+    const hayPrice = parseFloat(document.getElementById('hayPrice').value) || 25;
+    const oatsPrice = parseFloat(document.getElementById('oatsPrice').value) || 40;
+    const branPrice = parseFloat(document.getElementById('branPrice').value) || 35;
+    const carrotPrice = parseFloat(document.getElementById('carrotPrice').value) || 30;
+    const premixPrice = parseFloat(document.getElementById('premixPrice').value) || 500;
+
+    // Базовая формула: 2.5% от веса
+    let dmi = weight * 0.025;
+    
+    // ОСНОВНОЕ ИЗМЕНЕНИЕ: Коррекция при хромоте
+    if (hasLameness) {
+        // При хромоте:
+        // 1. Увеличиваем белок на 20% для восстановления
+        // 2. Уменьшаем энергию если лошадь на покое
+        // 3. Увеличиваем клетчатку для здоровья ЖКТ
+        
+        if (activity === 'none' || activity === 'light') {
+            // Если лошадь на покое - меньше энергии
+            dmi *= 0.9;
+        } else {
+            // При нагрузках - нормальная энергия
+            dmi *= 1.0;
+        }
+        
+        // Увеличиваем долю белка в рационе
+        const proteinMultiplier = 1.2; // +20% белка
+    } else {
+        // Обычные коррекции...
+        if (activity === 'light') dmi *= 1.05;
+        if (activity === 'medium') dmi *= 1.1;
+        if (activity === 'heavy') dmi *= 1.15;
+        if (activity === 'competition') dmi *= 1.2;
+    }
+    
+    // Остальные коррекции...
+    if (health === 'recovering') dmi *= 1.1;
+    if (health === 'pregnant') dmi *= 1.15;
+    if (health === 'elderly') dmi *= 0.95;
+    
+    if (breed === 'heavy') dmi *= 1.05;
+    if (breed === 'pony') dmi *= 0.9;
+    
+    if (goal === 'gain') dmi *= 1.1;
+    if (goal === 'lose') dmi *= 0.9;
+    
+    // Распределение кормов С УЧЕТОМ ХРОМОТЫ
+    let hayPercent = 0.65; // 65% сено по умолчанию
+    let grainPercent = 0.25; // 25% зерно по умолчанию
+    let supplementPercent = 0.08; // 8% добавки
+    
+    if (hasLameness) {
+        // При хромоте:
+        // 1. Больше сена (источник клетчатки для здоровья ЖКТ)
+        // 2. Меньше крахмалистых зерновых
+        // 3. Больше специальных добавок
+        hayPercent = 0.70;     // +5% сена
+        grainPercent = 0.20;   // -5% зерна
+        supplementPercent = 0.08; // добавки
+    }
+    
+    const hayAmount = dmi * hayPercent * (100/85);
+    const grainAmount = dmi * grainPercent * (100/87);
+    const supplementAmount = dmi * supplementPercent * (100/88);
+    const vegetableAmount = 2.0;
+    const premixAmount = 0.1;
+    
+    // Расчет стоимости...
+    const hayCost = hayAmount * hayPrice;
+    const oatsCost = grainAmount * oatsPrice;
+    const branCost = supplementAmount * branPrice;
+    const carrotCost = vegetableAmount * carrotPrice;
+    const premixCost = premixAmount * premixPrice;
+    
+    const totalDayCost = hayCost + oatsCost + branCost + carrotCost + premixCost;
+    const totalMonthCost = totalDayCost * 30;
+    
+    // Обновляем UI...
+    document.getElementById('totalDMI').textContent = dmi.toFixed(2);
+    document.getElementById('energyValue').textContent = (dmi * 8.5).toFixed(1);
+    
+    // БЕЛОК: больше при хромоте
+    const baseProtein = dmi * 0.1;
+    const proteinAmount = hasLameness ? baseProtein * 1.2 : baseProtein;
+    document.getElementById('proteinValue').textContent = proteinAmount.toFixed(2);
+    
+    document.getElementById('fiberValue').textContent = (dmi * 0.6).toFixed(2);
+    
+    // Количества кормов
+    document.getElementById('hayAmount').textContent = hayAmount.toFixed(2);
+    document.getElementById('oatsAmount').textContent = grainAmount.toFixed(2);
+    document.getElementById('branAmount').textContent = supplementAmount.toFixed(2);
+    document.getElementById('carrotAmount').textContent = vegetableAmount.toFixed(2);
+    document.getElementById('premixAmount').textContent = (premixAmount * 1000).toFixed(0);
+    
+    // Стоимость
+    document.getElementById('hayCost').textContent = hayCost.toFixed(2) + ' руб/день';
+    document.getElementById('oatsCost').textContent = oatsCost.toFixed(2) + ' руб/день';
+    document.getElementById('branCost').textContent = branCost.toFixed(2) + ' руб/день';
+    document.getElementById('carrotCost').textContent = carrotCost.toFixed(2) + ' руб/день';
+    document.getElementById('premixCost').textContent = premixCost.toFixed(2) + ' руб/день';
+    document.getElementById('totalDayCost').textContent = totalDayCost.toFixed(2) + ' руб';
+    document.getElementById('totalMonthCost').textContent = totalMonthCost.toFixed(2) + ' руб';
+    document.getElementById('totalCost').textContent = totalMonthCost.toFixed(2) + ' руб/месяц';
+    
+    // Рекомендации С УЧЕТОМ ХРОМОТЫ
+    let recommendations = [
+        "Разделите суточную норму на 3-4 кормления",
+        "Сено должно быть доступно постоянно",
+        "Концентраты давайте после сена",
+        "Обеспечьте постоянный доступ к чистой воде",
+        "Взвешивайте корма для точности"
+    ];
+    
+    if (hasLameness) {
+        recommendations = [
+            "🏥 РЕАБИЛИТАЦИОННЫЙ РАЦИОН:",
+            "Увеличено содержание белка на 20% для восстановления тканей",
+            "Уменьшена доля крахмалистых кормов для снижения воспаления",
+            "Увеличена доля сена для здоровья ЖКТ",
+            "Рекомендуется покой и ограничение нагрузок",
+            "Обязательны добавки для суставов (см. ниже)",
+            "Контролируйте вес - лишний вес усугубляет хромоту"
+        ];
+        
+        // Показываем блок с реабилитационными добавками
+        document.getElementById('rehabSupplements').style.display = 'block';
+        
+        // Добавляем список добавок
+        const supplements = [
+            { name: "Глюкозамин", dose: "10,000-15,000 мг/день", purpose: "Восстановление хряща" },
+            { name: "Хондроитин", dose: "2,000-4,000 мг/день", purpose: "Защита суставов" },
+            { name: "МСМ", dose: "10,000-20,000 мг/день", purpose: "Противовоспалительное" },
+            { name: "Омега-3 (льняное масло)", dose: "30-60 мл/день", purpose: "Снижение воспаления" },
+            { name: "Витамин C", dose: "5,000-10,000 мг/день", purpose: "Антиоксидант" },
+            { name: "Куркумин", dose: "2,000-4,000 мг/день", purpose: "Противовоспалительное" }
+        ];
+        
+        const supplementsGrid = document.getElementById('supplementsGrid');
+        supplementsGrid.innerHTML = supplements.map(s => `
+            <div class="supplement-item">
+                <div class="supplement-name">${s.name}</div>
+                <div class="supplement-dose">${s.dose}</div>
+                <div style="color: var(--text-secondary); font-size: 12px; margin-top: 5px;">${s.purpose}</div>
+            </div>
+        `).join('');
+        
+        // Экономические рекомендации для реабилитации
+        if (totalMonthCost > 15000) {
+            recommendations.push("💡 Стоимость высока, но реабилитация важнее экономии");
+        }
+        
+    } else {
+        // Обычные рекомендации...
+        document.getElementById('rehabSupplements').style.display = 'none';
+        
+        if (hayCost > totalDayCost * 0.5) {
+            recommendations.push("💡 Сено составляет более 50% стоимости - рассмотрите покупку оптом");
+        }
+        
+        if (totalMonthCost > 15000) {
+            recommendations.push("💡 Стоимость рациона высока - рассмотрите альтернативные корма");
+        }
+    }
+    
+    // Общие рекомендации по здоровью
+    if (health === 'recovering') {
+        recommendations.push("Увеличьте долю белка для восстановления");
+    }
+    if (activity === 'competition') {
+        recommendations.push("За 2 часа до соревнований не давайте концентраты");
+    }
+    if (goal === 'lose') {
+        recommendations.push("Увеличьте время выпаса для естественного снижения веса");
+    }
+    
+    document.getElementById('recommendationsList').innerHTML = 
+        recommendations.map(r => `<li>${r}</li>`).join('');
+    
+    // Показываем результаты
+    document.querySelector('.ration-wizard').style.display = 'none';
+    document.getElementById('rationResult').style.display = 'block';
+    
+    // Помечаем шаги как completed
+    for (let i = 1; i <= 5; i++) {
+        document.getElementById(`step${i}`).classList.add('completed');
+        document.getElementById(`step${i}`).classList.remove('active');
+    }
+}
+
+// Остальные функции (nextStep, prevStep, restartWizard и т.д.) остаются...
+</script>
+{% endblock %}

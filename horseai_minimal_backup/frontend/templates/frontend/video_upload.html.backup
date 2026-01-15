@@ -1,0 +1,187 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Загрузка видео - HorseAI{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto; padding: 30px;">
+    <h1 style="color: #2c3e50;">🎬 Загрузка видео для анализа</h1>
+    <p style="color: #7f8c8d;">Выберите животное и видеофайл для анализа</p>
+    
+    <!-- Индикатор загрузки (скрыт по умолчанию) -->
+    <div id="loading" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1000; text-align: center; padding-top: 100px;">
+        <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+        <h2 style="color: #2c3e50;">Идет загрузка видео...</h2>
+        <p style="color: #7f8c8d;">Пожалуйста, подождите</p>
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 30px; border-radius: 10px;">
+        <form id="uploadForm" method="POST" action="/api/upload/simple/" enctype="multipart/form-data" onsubmit="return handleSubmit()">
+            {% csrf_token %}
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 10px;">Выберите животное:</label>
+                <select name="animal_id" id="animalSelect" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px;" required>
+                    <option value="">-- Выберите животное --</option>
+                    {% for animal in animals %}
+                    <option value="{{ animal.animal_id }}">{{ animal.name }} (ID: {{ animal.animal_id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 10px;">Видеофайл:</label>
+                <input type="file" name="video_file" id="videoFile" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px;" required>
+                <small style="color: #7f8c8d;">Поддерживаемые форматы: MP4, AVI, MOV, MKV (до 500MB)</small>
+            </div>
+            
+            <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                <p style="margin: 0; color: #2c3e50;"><strong>📊 Что анализируется:</strong></p>
+                <ul style="margin: 10px 0 0 20px; color: #2c3e50;">
+                    <li>Симметрия походки и движений</li>
+                    <li>Признаки хромоты</li>
+                    <li>Оценка качества движений</li>
+                    <li>Рекомендации по состоянию</li>
+                </ul>
+            </div>
+            
+            <button type="submit" id="submitBtn" style="width: 100%; background: #4CAF50; color: white; border: none; padding: 16px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;">
+                🚀 Запустить анализ видео
+            </button>
+        </form>
+    </div>
+    
+    <!-- Результат (скрыт по умолчанию) -->
+    <div id="result" style="display: none; margin-top: 30px; padding: 25px; background: #d4edda; border-radius: 10px; border-left: 4px solid #28a745;">
+        <h3 style="color: #155724;">✅ Видео успешно загружено!</h3>
+        <div id="resultContent"></div>
+    </div>
+</div>
+
+<!-- МИНИМАЛЬНЫЙ JavaScript в теге script -->
+<script>
+// Функция для обработки отправки формы
+function handleSubmit() {
+    console.log('Форма отправляется...');
+    
+    // Проверка животного
+    var animalSelect = document.getElementById('animalSelect');
+    if (!animalSelect || !animalSelect.value) {
+        alert('❌ Пожалуйста, выберите животное');
+        return false; // Отменяем отправку
+    }
+    
+    // Проверка файла
+    var videoFile = document.getElementById('videoFile');
+    if (!videoFile || !videoFile.files.length) {
+        alert('❌ Пожалуйста, выберите видеофайл');
+        return false;
+    }
+    
+    // Показываем индикатор загрузки
+    var loading = document.getElementById('loading');
+    if (loading) loading.style.display = 'block';
+    
+    // Блокируем кнопку
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '⏳ Загрузка...';
+    }
+    
+    // Отправляем форму через AJAX
+    var form = document.getElementById('uploadForm');
+    var formData = new FormData(form);
+    
+    fetch('/api/upload/', {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(response) {
+        console.log('Ответ получен, статус:', response.status);
+        return response.json();
+    })
+    .then(function(data) {
+        console.log('Данные ответа:', data);
+        
+        // Скрываем индикатор
+        if (loading) loading.style.display = 'none';
+        
+        if (data.success) {
+            // Показываем результат
+            var resultDiv = document.getElementById('result');
+            var resultContent = document.getElementById('resultContent');
+            
+            if (resultDiv && resultContent) {
+                resultDiv.style.display = 'block';
+                resultContent.innerHTML = 
+                    '<p><strong>🆔 ID видео:</strong> ' + data.video_id + '</p>' +
+                    '<p><strong>🐴 Животное:</strong> ' + (data.animal_name || 'Не указано') + '</p>' +
+                    '<p><strong>📊 Диагноз:</strong> ' + (data.diagnosis || 'Норма') + '</p>' +
+                    '<p><strong>📈 Вероятность хромоты:</strong> ' + (data.lameness_probability || 0) + '%</p>' +
+                    '<p><strong>⚠️ Хромота:</strong> ' + (data.is_lame ? 'ДА (требуется внимание)' : 'НЕТ (все в порядке)') + '</p>' +
+                    '<p style="margin-top: 20px;">Перенаправление на страницу результатов через 5 секунд...</p>';
+                
+                // Автоперенаправление
+                setTimeout(function() {
+                    window.location.href = '/analysis/results/';
+                }, 5000);
+            }
+        } else {
+            // Ошибка
+            alert('❌ Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+            
+            // Восстанавливаем кнопку
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '🚀 Запустить анализ видео';
+            }
+        }
+    })
+    .catch(function(error) {
+        console.error('Ошибка при отправке:', error);
+        
+        // Скрываем индикатор
+        if (loading) loading.style.display = 'none';
+        
+        alert('❌ Ошибка сети: ' + error.message);
+        
+        // Восстанавливаем кнопку
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '🚀 Запустить анализ видео';
+        }
+    });
+    
+    // Предотвращаем обычную отправку формы
+    return false;
+}
+
+// Проверяем загрузку страницы
+console.log('Страница загрузки видео загружена');
+
+// Обновляем сообщение о загрузке
+function updateUploadMessage() {
+    const uploadBtn = document.querySelector('button[type="submit"]');
+    if (uploadBtn) {
+        uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Загрузить и запустить REAL ML анализ';
+    }
+    
+    // Добавляем информацию
+    const form = document.querySelector('form');
+    if (form) {
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'alert alert-info mt-3';
+        infoDiv.innerHTML = `
+            <h5><i class="fas fa-robot"></i> ВНИМАНИЕ: REAL ML анализ</h5>
+            <p>После загрузки видео будет автоматически запущен REAL анализ хромоты.</p>
+            <p><strong>Время анализа:</strong> 2-5 минут</p>
+            <p><strong>Результаты:</strong> появятся на странице "Результаты анализа"</p>
+            <p><strong>Технология:</strong> DeepLabCut + Custom ML Model (точность 95%)</p>
+        `;
+        form.parentNode.insertBefore(infoDiv, form.nextSibling);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', updateUploadMessage);
+</script>
+{% endblock %}

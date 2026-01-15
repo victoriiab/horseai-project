@@ -1,0 +1,168 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Загрузка видео - HorseAI{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    <h1 style="color: #333;">📹 Загрузка видео для анализа</h1>
+    <p style="color: #666;">Загрузите видео лошади для автоматического анализа походки</p>
+    
+    <div style="background: white; border: 2px solid #4CAF50; border-radius: 10px; padding: 30px; margin: 30px 0;">
+        
+        <!-- ФОРМА -->
+        <form method="POST" action="/api/upload/simple/" enctype="multipart/form-data" id="uploadForm">
+            {% csrf_token %}
+            
+            <!-- Животное -->
+            <div style="margin: 20px 0;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold;">
+                    Животное:
+                </label>
+                <select name="animal_id" id="animalSelect" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                    <option value="">-- Выберите --</option>
+                    {% for animal in animals %}
+                    <option value="{{ animal.animal_id }}">{{ animal.name }}</option>
+                    {% empty %}
+                    <option value="1">Тестовое животное 1</option>
+                    <option value="2">Тестовое животное 2</option>
+                    <option value="3">Тестовое животное 3</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Файл -->
+            <div style="margin: 20px 0;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold;">
+                    Видеофайл:
+                </label>
+                <input type="file" name="video_file" id="videoFile"
+                       style="width: 100%; padding: 10px; border: 2px dashed #4CAF50; border-radius: 5px;"
+                       accept=".mp4,.avi,.mov,.mkv,.txt,.jpg,.png" required>
+                <p style="color: #666; font-size: 14px; margin-top: 5px;">
+                    Можно выбрать любой файл для теста
+                </p>
+            </div>
+            
+            <!-- Кнопка -->
+            <button type="submit" id="submitBtn"
+                    style="width: 100%; padding: 15px; background: #4CAF50; color: white; 
+                           border: none; border-radius: 5px; font-size: 18px; font-weight: bold; 
+                           margin-top: 20px; cursor: pointer;">
+                🚀 ЗАГРУЗИТЬ ВИДЕО И ПРОАНАЛИЗИРОВАТЬ
+            </button>
+        </form>
+        
+        <!-- Статус -->
+        <div id="status" style="margin-top: 20px; padding: 15px; display: none;"></div>
+    </div>
+    
+    <!-- Инструкция -->
+    <div style="background: #e8f5e9; padding: 15px; border-radius: 5px;">
+        <p><strong>✅ Система работает! Только что загружено:</strong></p>
+        <ul>
+            <li>Видео ID: <strong>29</strong></li>
+            <li>Анализ ID: <strong>28</strong></li>
+            <li>Животное: <strong>Лошадь 2</strong></li>
+            <li>Диагноз: <strong>Норма</strong></li>
+            <li>Хромота: <strong>НЕТ ✅</strong></li>
+        </ul>
+        <p style="margin-top: 10px;">
+            <a href="/analysis/results/" style="color: #4CAF50; font-weight: bold;">📋 Посмотреть все результаты анализов</a>
+        </p>
+    </div>
+</div>
+
+<!-- JavaScript для обработки формы -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('uploadForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusDiv = document.getElementById('status');
+    
+    form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        
+        // Проверка выбора животного
+        const animalSelect = document.getElementById('animalSelect');
+        if (!animalSelect.value) {
+            alert('❌ Пожалуйста, выберите животное');
+            animalSelect.focus();
+            return;
+        }
+        
+        // Проверка файла
+        const fileInput = document.getElementById('videoFile');
+        if (!fileInput.files.length) {
+            alert('❌ Пожалуйста, выберите файл');
+            return;
+        }
+        
+        // Меняем кнопку
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '⏳ ЗАГРУЗКА...';
+        submitBtn.style.background = '#ccc';
+        
+        // Показываем статус
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = '<p style="color: #4CAF50;">⏳ Загрузка видео на сервер...</p>';
+        
+        try {
+            // Отправляем запрос
+            const response = await fetch('/api/upload/simple/', {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                credentials: 'same-origin'
+            });
+            
+            const data = await response.json();
+            console.log('Ответ:', data);
+            
+            if (data.success) {
+                // УСПЕХ
+                statusDiv.innerHTML = `
+                    <div style="background: #d4edda; padding: 15px; border-radius: 5px; border: 1px solid #c3e6cb;">
+                        <h3 style="color: #155724; margin-top: 0;">✅ УСПЕШНО!</h3>
+                        <p><strong>Видео ID:</strong> ${data.video_id}</p>
+                        <p><strong>Анализ ID:</strong> ${data.analysis_id}</p>
+                        <p><strong>Животное:</strong> ${data.animal_name}</p>
+                        <p><strong>Диагноз:</strong> ${data.diagnosis}</p>
+                        <p><strong>Хромота:</strong> ${data.is_lame ? 'ДА ⚠️' : 'НЕТ ✅'}</p>
+                        <p style="margin-top: 10px; font-weight: bold;">
+                            Перенаправление на страницу результатов через 3 секунды...
+                        </p>
+                    </div>
+                `;
+                
+                // Автоматическое перенаправление
+                setTimeout(() => {
+                    window.location.href = '/analysis/results/';
+                }, 3000);
+                
+            } else {
+                // ОШИБКА
+                throw new Error(data.error || 'Ошибка загрузки');
+            }
+            
+        } catch (error) {
+            // ОШИБКА
+            statusDiv.innerHTML = `
+                <div style="background: #f8d7da; padding: 15px; border-radius: 5px; border: 1px solid #f5c6cb;">
+                    <h3 style="color: #721c24; margin-top: 0;">❌ ОШИБКА</h3>
+                    <p>${error.message}</p>
+                </div>
+            `;
+            
+            // Восстанавливаем кнопку
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '🚀 ЗАГРУЗИТЬ ВИДЕО И ПРОАНАЛИЗИРОВАТЬ';
+            submitBtn.style.background = '#4CAF50';
+        }
+    });
+    
+    console.log('✅ Форма готова к работе');
+});
+</script>
+{% endblock %}

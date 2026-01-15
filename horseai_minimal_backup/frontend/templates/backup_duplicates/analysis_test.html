@@ -1,0 +1,130 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Тест анализов - HorseAI{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto; padding: 40px;">
+    <h1 style="color: var(--text-primary); margin-bottom: 30px;">🧪 Тестирование анализов</h1>
+    
+    <div style="background: var(--bg-card); padding: 30px; border-radius: var(--radius-lg); margin-bottom: 30px;">
+        <h2 style="color: var(--text-primary); margin-bottom: 20px;">Демо-функции</h2>
+        
+        <div style="display: grid; gap: 15px;">
+            <button onclick="createDemoAnalysis()" 
+                    style="padding: 15px; background: linear-gradient(135deg, var(--accent), var(--earth)); 
+                           color: white; border: none; border-radius: var(--radius); font-weight: 600; cursor: pointer;">
+                🚀 Создать демо-анализ
+            </button>
+            
+            <button onclick="checkAnalyses()"
+                    style="padding: 15px; background: var(--bg-hover); color: var(--text-primary); 
+                           border: 1px solid var(--border); border-radius: var(--radius); font-weight: 600; cursor: pointer;">
+                🔍 Проверить анализы в базе
+            </button>
+            
+            <a href="/analysis/results/" 
+               style="padding: 15px; background: var(--sage); color: white; text-align: center; 
+                      border-radius: var(--radius); font-weight: 600; text-decoration: none; display: block;">
+                📊 Перейти к результатам
+            </a>
+        </div>
+    </div>
+    
+    <div id="result" style="margin-top: 30px; padding: 20px; background: var(--bg-card); border-radius: var(--radius);">
+        <!-- Результаты будут здесь -->
+    </div>
+</div>
+
+<script>
+async function createDemoAnalysis() {
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = '<p style="color: var(--text-secondary);">⏳ Создаем демо-анализ...</p>';
+    
+    try {
+        const response = await fetch('/api/simple-analysis/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div style="color: var(--sage);">
+                    <h3>✅ Демо-анализ создан!</h3>
+                    <p>ID анализа: ${data.analysis_id}</p>
+                    <p>${data.message}</p>
+                    ${data.is_lame ? '<p style="color: var(--accent);">⚠️ Обнаружена хромота</p>' : '<p>✅ Хромота не обнаружена</p>'}
+                    <p>Вероятность хромоты: ${(data.lameness_probability * 100).toFixed(1)}%</p>
+                    <a href="/analysis/results/" style="color: var(--accent); text-decoration: underline;">
+                        Посмотреть в результатах →
+                    </a>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `<div style="color: #fca5a5;">
+                <h3>❌ Ошибка</h3>
+                <p>${data.error || 'Неизвестная ошибка'}</p>
+            </div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div style="color: #fca5a5;">
+            <h3>❌ Ошибка сети</h3>
+            <p>${error.message}</p>
+        </div>`;
+    }
+}
+
+async function checkAnalyses() {
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = '<p style="color: var(--text-secondary);">⏳ Загружаем данные...</p>';
+    
+    try {
+        const response = await fetch('/analysis/results/?format=json');
+        const text = await response.text();
+        
+        // Пытаемся распарсить как JSON
+        try {
+            const data = JSON.parse(text);
+            resultDiv.innerHTML = `
+                <div style="color: var(--text-primary);">
+                    <h3>📊 Статистика анализов</h3>
+                    <p>Всего анализов: ${data.count || 0}</p>
+                    <p>Анализов с хромотой: ${data.lame_count || 0}</p>
+                </div>
+            `;
+        } catch {
+            // Если не JSON, покажем текст
+            resultDiv.innerHTML = `
+                <div style="color: var(--text-primary);">
+                    <h3>📊 Страница загружена</h3>
+                    <p>Перейдите по <a href="/analysis/results/" style="color: var(--accent);">ссылке</a> чтобы увидеть результаты</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div style="color: #fca5a5;">
+            <p>❌ Ошибка: ${error.message}</p>
+        </div>`;
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

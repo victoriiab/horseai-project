@@ -1,0 +1,13 @@
+        fileInput.value = '';
+        
+        // Сброс прогресса
+        document.getElementById('step1Icon').classList.remove('completed');
+        document.getElementById('step1Text').classList.remove('completed');
+        document.getElementById('step2Icon').classList.remove('completed');
+        document.getElementById('step2Text').classList.remove('completed');
+        document.getElementById('step3Icon').classList.remove('completed');
+        document.getElementById('step3Text').classList.remove('completed');
+    }
+});
+</script>
+{% endblock %}

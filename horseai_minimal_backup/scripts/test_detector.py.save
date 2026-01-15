@@ -1,0 +1,739 @@
+import numpy as np
+import pandas as pd
+import joblib
+from pathlib import Path
+from typing import Tuple, Optional
+import deeplabcut
+from scipy.signal import savgol_filter
+import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings('ignore')
+
+import sys
+
+current_dir = Path(__file__).parent
+parent_dir = current_dir.parent
+sys.path.append(str(parent_dir))
+
+class HorseLamenessDetector:
+    def __init__(self):
+        current_dir = Path(__file__).parent
+        self.project_root = current_dir.parent
+        # Путь к реальной модели
+        model_paths = [
+            self.project_root / "cleanup_backup" / "models" / "trained" / "model.pkl",
+            self.project_root / "model.pkl",
+            self.project_root / "ml_model" / "model.pkl"
+        ]
+        
+        for path in model_paths:
+            if path.exists():
+                self.ml_model_path = path
+                print(f"✅ Найдена модель: {self.ml_model_path}")
+                break
+        else:
+            # Если ни один путь не существует, используем первый как fallback
+            self.ml_model_path = model_paths[0] 
+        # Output directory - используем media/detector_results для совместимости с Django
+        if output_dir:
+            self.output_dir = Path(output_dir)
+        else:
+            # По умолчанию сохраняем в media/detector_results
+            self.output_dir = self.project_root / "media" / "detector_results"
+        
+        # Создаем директорию
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        print(f"✅ Output directory: {self.output_dir}")
+
+        print("Детектор хромоты лошадей")
+        print()
+        
+        self._load_ml_model()
+    
+    def _load_ml_model(self):
+        print("Загрузка модели...")
+        
+        try:
+            model_data = joblib.load(self.ml_model_path)
+            self.scaler = model_data['scaler']
+            self.hybrid_model = model_data['hybrid_model']
+            self.key_thresholds = {
+                'threshold_rf': model_data.get('threshold_rf', 0.5),
+                'threshold_nn': model_data.get('threshold_nn', 0.5),
+                'threshold_hybrid': model_data.get('threshold_hybrid', 0.5)
+            }
+            
+            print("Структура модели:")
+            print(f"  - RF порог: {self.key_thresholds['threshold_rf']:.3f}")
+            print(f"  - NN порог: {self.key_thresholds['threshold_nn']:.3f}")
+            print(f"  - Гибридный порог: {self.key_thresholds['threshold_hybrid']:.3f}")
+            print()
+            
+        except Exception as e:
+            print(f"Ошибка загрузки: {e}")
+            raise
+
+    def analyze_video_superanimal(self, video_path: Path) -> Tuple[Optional[Path], Optional[Path]]:
+        print(f"Анализ видео: {video_path.name}")
+        
+        try:
+            print("Разметка ключевых точек...")
+            
+            deeplabcut.video_inference_superanimal(
+                videos=[str(video_path)],
+                superanimal_name='superanimal_quadruped',
+                model_name='hrnet_w32',
+                detector_name='ssdlite',
+                videotype=video_path.suffix[1:],
+                dest_folder=str(self.output_dir),
+                video_adapt=False,
+                pcutoff=0.1,
+                max_individuals=1 
+            )
+            
+            video_stem = video_path.stem
+            h5_files = list(self.output_dir.glob(f"*{video_stem}*.h5"))
+            
+            if not h5_files:
+                raise FileNotFoundError(f"H5 файл не найден для {video_stem}")
+            
+            h5_file = h5_files[0]
+            print(f"Данные поз: {h5_file.name}")
+            
+            import time
+            labeled_video = None
+            
+            for attempt in range(3):
+                labeled_videos = list(self.output_dir.glob(f"*{video_stem}*labeled*.mp4"))
+                if not labeled_videos:
+                    labeled_videos = list(self.output_dir.glob(f"*{video_stem}*_sk.mp4"))
+                
+                if labeled_videos:
+                    labeled_video = labeled_videos[0]
+                    print(f"Видео с разметкой: {labeled_video.name}")
+                    break
+                
+                if attempt < 2:
+                    time.sleep(1)
+            
+            if not labeled_video:
+                print("Видео с разметкой не создано")
+            
+            return h5_file, labeled_video
+            
+        except Exception as e:
+            print(f"Ошибка DLC: {e}")
+            raise
+    # извлечение признаков как в обучении модели, так то можно эту функцию использовать оттуда, но пусть будет тут тоже
+    def extract_features(self, h5_file: Path) -> dict:
+        print("Извлечение признаков походки...")
+        
+        df = pd.read_hdf(h5_file)
+        print(f"Кадров: {len(df)}, Колонок: {len(df.columns)}")
+        
+        paw_mapping = { 
+            'front_left': None, 'front_right': None,
+            'back_left': None, 'back_right': None
+        }
+        reference_points = {'neck': None, 'tailbase': None}
+        
+        for col in df.columns:
+            if len(col) < 4:
+                continue
+            part_name = col[2] if len(col) > 2 else ''
+            coord = col[3] if len(col) > 3 else ''
+            
+            if coord == 'y':
+                if 'front_left_paw' in part_name:
+                    paw_mapping['front_left'] = col
+                elif 'front_right_paw' in part_name:
+                    paw_mapping['front_right'] = col
+                elif 'back_left_paw' in part_name:
+                    paw_mapping['back_left'] = col
+                elif 'back_right_paw' in part_name:
+                    paw_mapping['back_right'] = col
+                    
+            if coord == 'x':
+                if 'neck' in part_name:
+                    reference_points['neck'] = col
+                elif 'tailbase' in part_name or 'tail_base' in part_name:
+                    reference_points['tailbase'] = col
+        
+        if not all(paw_mapping.values()):
+            print("Не удалось распознать все 4 копыта лошади")
+            return None
+
+        signals_raw = {} 
+        for paw, col in paw_mapping.items(): 
+            signals_raw[paw] = -df[col].values
+
+        common_mask = np.ones(len(df), dtype=bool)
+
+        for paw, y_values in signals_raw.items():
+            finite_mask = np.isfinite(y_values)
+            
+            valid_values = y_values[finite_mask]
+            if len(valid_values) > 0:
+                median = np.median(valid_values)
+                mad = np.median(np.abs(valid_values - median))
+                if mad > 0:
+                    outlier_mask = np.abs(y_values - median) < 6 * mad
+                    finite_mask = finite_mask & outlier_mask
+            
+            common_mask = common_mask & finite_mask
+
+        common_indices = np.where(common_mask)[0]
+
+        if len(common_indices) < 20:
+            print("Слишком мало общих хороших кадров")
+            return None
+
+        signals = {}
+        for paw, y_values in signals_raw.items():
+            signals[paw] = y_values[common_indices]
+
+        scale_factor = 1.0
+
+        if reference_points['neck'] and reference_points['tailbase']:
+            try:
+                neck_x = df[reference_points['neck']].values
+                tail_x = df[reference_points['tailbase']].values
+                body_length = np.median(np.abs(neck_x - tail_x))
+                if body_length > 10:
+                    scale_factor = body_length
+            except:
+                pass
+
+        if scale_factor == 1.0:
+            first_good_frame = common_indices[0]
+            
+            front_x = []
+            back_x = []
+
+            for paw_name, paw_col in paw_mapping.items():
+                x_col = (paw_col[0], paw_col[1], paw_col[2], 'x')
+                if x_col in df.columns:
+                    x_val = df[x_col].iloc[first_good_frame]
+                    if np.isfinite(x_val):
+                        if 'front' in paw_name:
+                            front_x.append(x_val)
+                        else:
+                            back_x.append(x_val)
+            
+            if front_x and back_x:
+                scale_factor = np.mean(front_x) - np.mean(back_x)
+
+        signals_normalized = {}
+        for paw, signal in signals.items():
+            signal_centered = signal - np.mean(signal)
+            signals_normalized[paw] = signal_centered / scale_factor
+
+        signals_smoothed = {}
+        for paw, signal in signals_normalized.items():
+            try:
+                window_length = min(11, len(signal) if len(signal) % 2 == 1 else len(signal) - 1)
+                if window_length < 5:
+                    window_length = 5
+                smoothed = savgol_filter(signal, window_length=window_length, polyorder=3)
+                signals_smoothed[paw] = smoothed
+            except:
+                signals_smoothed[paw] = signal
+        
+        features = {}
+        amp_fl = np.ptp(signals_smoothed['front_left'])
+        amp_fr = np.ptp(signals_smoothed['front_right'])
+        amp_bl = np.ptp(signals_smoothed['back_left'])
+        amp_br = np.ptp(signals_smoothed['back_right'])
+        
+        features['front_asymmetry'] = abs(amp_fl - amp_fr) / (amp_fl + amp_fr + 1e-10)
+        features['back_asymmetry'] = abs(amp_bl - amp_br) / (amp_bl + amp_br + 1e-10)
+        features['min_amplitude'] = min(amp_fl, amp_fr, amp_bl, amp_br)
+        
+        front_avg = (amp_fl + amp_fr) / 2
+        back_avg = (amp_bl + amp_br) / 2
+        features['back_front_ratio'] = back_avg / (front_avg + 1e-10)
+        
+        features['front_left_var'] = np.std(signals_smoothed['front_left'])
+        features['front_right_var'] = np.std(signals_smoothed['front_right'])
+        
+        def correlation(s1, s2):
+            if np.std(s1) < 1e-10 or np.std(s2) < 1e-10:
+                return 0.0
+            return np.corrcoef(s1, s2)[0, 1]
+        
+        features['front_sync'] = correlation(signals_smoothed['front_left'], signals_smoothed['front_right'])
+        features['back_sync'] = correlation(signals_smoothed['back_left'], signals_smoothed['back_right'])
+        features['diagonal_sync'] = correlation(signals_smoothed['front_left'], signals_smoothed['back_right'])
+        
+        vel_fl = np.mean(np.abs(np.diff(signals_smoothed['front_left'])))
+        vel_fr = np.mean(np.abs(np.diff(signals_smoothed['front_right'])))
+        features['front_velocity'] = (vel_fl + vel_fr) / 2
+        
+        acc_fl = np.diff(np.diff(signals_smoothed['front_left']))
+        features['front_jerk'] = np.std(acc_fl) if len(acc_fl) > 0 else 0
+        
+        features['total_rom'] = (amp_fl + amp_fr + amp_bl + amp_br) / 4
+        
+        for key, value in features.items():
+            if not np.isfinite(value):
+                features[key] = 0.0
+        
+        self.last_signals = signals_smoothed
+        print(f"Извлечено {len(features)} признаков походки")
+        return features
+
+
+    def predict_lameness(self, features: dict) -> dict:
+        print("Предсказание хромоты...")
+        
+        if features is None:
+            raise ValueError("Признаки не извлечены")
+        
+        try:
+            feature_names = [
+                'front_asymmetry', 'back_asymmetry', 'min_amplitude',
+                'back_front_ratio', 'front_left_var', 'front_right_var',
+                'front_sync', 'back_sync', 'diagonal_sync',
+                'front_velocity', 'front_jerk', 'total_rom'
+            ]
+            
+            X = np.array([[features[name] for name in feature_names]])
+            X_scaled = self.scaler.transform(X)
+
+            # Получаем вероятности от от рф и нн
+            rf_proba = self.hybrid_model.rf_model.predict_proba(X_scaled)[:, 1]
+            nn_proba = self.hybrid_model.nn_model.predict(X_scaled).flatten()
+            
+            # используем гибридную модель 
+            hybrid_proba = self.hybrid_model.predict_proba(
+                X_scaled, rf_proba=rf_proba, nn_proba=nn_proba
+            )[0]
+            
+            print(f"RF вероятность: {rf_proba[0]:.3f}")
+            print(f"NN вероятность: {nn_proba[0]:.3f}")
+            print(f"Гибридная вероятность: {hybrid_proba:.3f}")
+            
+            # Используем обученный порог для гибридной модели
+            hybrid_threshold = self.key_thresholds.get('threshold_hybrid', 0.5)
+            print(f"Используем обученный порог для гибрида: {hybrid_threshold:.3f}")
+            
+            pred = hybrid_proba >= hybrid_threshold
+            
+            # уверенность
+            max_distance = max(hybrid_threshold, 1 - hybrid_threshold)
+            distance_from_threshold = abs(hybrid_proba - hybrid_threshold)
+            confidence = min(100, (distance_from_threshold / max_distance) * 100)
+            
+            # Диагностика на основе уверенности и порога
+            if confidence >= 70:
+                if pred:
+                    diagnosis = "Хромая"
+                    diagnosis_note = "(высокая уверенность)"
+                else:
+                    diagnosis = "Здоровая" 
+                    diagnosis_note = "(высокая уверенность)"
+            elif confidence >= 50:
+                if pred:
+                    diagnosis = "Вероятно хромая"
+                    diagnosis_note = "(рекомендуется осмотр)"
+                else:
+                    diagnosis = "Вероятно здоровая"
+                    diagnosis_note = "(рекомендуется наблюдение)"
+            else:
+                diagnosis = "Неопределенный результат"
+                diagnosis_note = "(низкая уверенность)"
+            
+            result = {
+                'is_lame': bool(pred),
+                'lameness_probability': round(float(hybrid_proba) * 100, 2),
+                'confidence': round(float(confidence), 2),
+                'diagnosis': diagnosis,
+                'diagnosis_note': diagnosis_note,
+                'features': features,
+                'threshold_used': round(float(hybrid_threshold), 4)
+            }
+            
+            print(f"Вероятность хромоты: {result['lameness_probability']:.1f}%")
+            print(f"Порог классификации: {result['threshold_used']:.3f}")
+            print(f"Диагноз: {diagnosis} {diagnosis_note}")
+            print(f"Уверенность: {result['confidence']:.1f}%")
+            
+            return result
+            
+        except Exception as e:
+            print(f"Ошибка предсказания: {e}")
+            raise
+
+    def _save_result_to_file(self, result_file: Path, video_name: str, result: dict, 
+                            h5_file: Path, labeled_video: Optional[Path]):
+        
+        with open(result_file, 'w', encoding='utf-8') as f:
+            f.write("Отчет об анализе лошади\n")
+            f.write("=" * 50 + "\n\n")
+            
+            f.write(f"Анализируемое видео: {video_name}\n")
+            f.write(f"Дата анализа: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            
+            f.write(f"Диагноз: {result['diagnosis']}\n")
+            f.write(f"Примечание: {result['diagnosis_note']}\n\n")
+            
+            f.write("Показатели\n")
+            f.write("-" * 50 + "\n")
+            f.write(f"Вероятность хромоты: {result['lameness_probability']:.1f}%\n")
+            f.write(f"Уровень уверенности анализа: {result['confidence']:.1f}%\n")
+            
+            if result['confidence'] >= 70:
+                f.write("Уровень уверенности: высокий\n")
+            elif result['confidence'] >= 50:
+                f.write("Уровень уверенности: средний\n")
+            else:
+                f.write("Уровень уверенности: низкий\n")
+            f.write("\n")
+            
+            f.write("Биомеханические характеристики\n")
+            f.write("-" * 50 + "\n")
+            
+            features = result['features']
+            
+            f.write("Показатели асимметрии:\n")
+            f.write(f"    Асимметрия передних конечностей: {features['front_asymmetry']:.4f}\n")
+            f.write(f"    Асимметрия задних конечностей:   {features['back_asymmetry']:.4f}\n\n")
+            
+            f.write("Показатели синхронности:\n")
+            f.write(f"    Синхронность передних конечностей: {features['front_sync']:.4f}\n")
+            f.write(f"    Синхронность задних конечностей:   {features['back_sync']:.4f}\n")
+            f.write(f"    Диагональная синхронность:         {features['diagonal_sync']:.4f}\n\n")
+            
+            f.write("Динамические параметры:\n")
+            f.write(f"    Скорость движения:     {features['front_velocity']:.4f}\n")
+            f.write(f"    Общая амплитуда:       {features['total_rom']:.4f}\n")
+            f.write(f"    Отношение нагрузки:    {features['back_front_ratio']:.4f}\n")
+            f.write(f"    Минимальная амплитуда: {features['min_amplitude']:.4f}\n\n")
+            
+            f.write("Анализ отклонений от нормы\n")
+            f.write("-" * 50 + "\n")
+            
+            front_asym_thresh = self.key_thresholds.get('front_asymmetry', {}).get('median', 0.05)
+            back_asym_thresh = self.key_thresholds.get('back_asymmetry', {}).get('median', 0.05)
+            front_sync_thresh = self.key_thresholds.get('front_sync', {}).get('median', 0.5)
+            back_front_thresh = self.key_thresholds.get('back_front_ratio', {}).get('median', 1.0)
+            back_front_std = self.key_thresholds.get('back_front_ratio', {}).get('std', 0.1)
+            
+            f.write(f"Асимметрия передних: {features['front_asymmetry']:.4f} (норма: <{front_asym_thresh:.3f})\n")
+            f.write(f"Асимметрия задних:   {features['back_asymmetry']:.4f} (норма: <{back_asym_thresh:.3f})\n")
+            f.write(f"Синхронность передних: {features['front_sync']:.4f} (норма: >{front_sync_thresh:.3f})\n")
+            f.write(f"Отношение нагрузки:   {features['back_front_ratio']:.4f} (норма: {back_front_thresh-back_front_std:.3f}-{back_front_thresh+back_front_std:.3f})\n\n")
+            
+            f.write("Интерпретация результатов\n")
+            f.write("-" * 50 + "\n")
+            interpretation = self._get_interpretation(features, result['is_lame'])
+            f.write(interpretation + "\n\n")
+            
+            f.write("Рекомендации\n")
+            f.write("-" * 50 + "\n")
+            if result['confidence'] >= 70:
+                if result['is_lame']:
+                    f.write("Срочно обратиться к ветеринарному врачу\n")
+                    f.write("Провести дополнительную диагностику\n")
+                    f.write("Ограничить физические нагрузки\n")
+                else:
+                    f.write("Продолжать регулярные наблюдения\n")
+                    f.write("Биомеханические показатели в норме\n")
+            elif result['confidence'] >= 50:
+                f.write("Рекомендуется показать лошадь ветеринарному специалисту\n")
+            else:
+                f.write("Требуется повторный анализ видео\n")
+                f.write("Возможно, видео недостаточно качественное\n")
+                f.write("Рекомендуется консультация специалиста\n")
+            f.write("\n")
+            
+            f.write("Техническая информация\n")
+            f.write("-" * 50 + "\n")
+            f.write(f"Файл данных поз: {h5_file.name}\n")
+            if labeled_video:
+                f.write(f"Видео с разметкой: {labeled_video.name}\n")
+            f.write(f"Уверенность предсказания: {result['confidence']:.1f}%\n")
+            
+            f.write("\nРасположение файлов\n")
+            f.write("-" * 50 + "\n")
+            f.write(f"H5 файл с данными поз: {h5_file.name}\n")
+            if labeled_video:
+                f.write(f"Видео с разметкой: {labeled_video.name}\n")
+            f.write(f"Все файлы находятся в: {self.output_dir}\n")
+        
+        print(f"Текстовый отчет: results/{result_file.name}")
+
+    def _get_interpretation(self, features: dict, is_lame: bool) -> str:
+        interpretations = []   
+        
+        front_asym_thresh = self.key_thresholds.get('front_asymmetry', {}).get('median', 0.05)
+        front_asym_std = self.key_thresholds.get('front_asymmetry', {}).get('std', 0.02)
+        
+        back_asym_thresh = self.key_thresholds.get('back_asymmetry', {}).get('median', 0.05)
+        back_asym_std = self.key_thresholds.get('back_asymmetry', {}).get('std', 0.02)
+        
+        front_sync_thresh = self.key_thresholds.get('front_sync', {}).get('median', 0.5)
+        front_sync_std = self.key_thresholds.get('front_sync', {}).get('std', 0.1)
+        
+        back_front_thresh = self.key_thresholds.get('back_front_ratio', {}).get('median', 1.0)
+        back_front_std = self.key_thresholds.get('back_front_ratio', {}).get('std', 0.1)
+        
+        if features['front_asymmetry'] > front_asym_thresh + front_asym_std:
+            interpretations.append(f"Выраженная асимметрия передних конечностей (>{front_asym_thresh + front_asym_std:.3f})")
+        elif features['front_asymmetry'] > front_asym_thresh:
+            interpretations.append(f"Умеренная асимметрия передних конечностей (>{front_asym_thresh:.3f})")
+        else:
+            interpretations.append(f"Незначительная асимметрия передних конечностей (<={front_asym_thresh:.3f})")
+        
+        if features['back_asymmetry'] > back_asym_thresh + back_asym_std:
+            interpretations.append(f"Выраженная асимметрия задних конечностей (>{back_asym_thresh + back_asym_std:.3f})")
+        elif features['back_asymmetry'] > back_asym_thresh:
+            interpretations.append(f"Умеренная асимметрия задних конечностей (>{back_asym_thresh:.3f})")
+        else:
+            interpretations.append(f"Незначительная асимметрия задних конечностей (<={back_asym_thresh:.3f})")
+        
+        if features['front_sync'] < front_sync_thresh - front_sync_std:
+            interpretations.append(f"Нарушена синхронность передних конечностей (<{front_sync_thresh - front_sync_std:.3f})")
+        else:
+            interpretations.append(f"Синхронность передних конечностей в норме (>={front_sync_thresh - front_sync_std:.3f})")
+        
+        if features['back_front_ratio'] < back_front_thresh - back_front_std:
+            interpretations.append(f"Снижена нагрузка на задние конечности (<{back_front_thresh - back_front_std:.3f})")
+        elif features['back_front_ratio'] > back_front_thresh + back_front_std:
+            interpretations.append(f"Повышена нагрузка на задние конечности (>{back_front_thresh + back_front_std:.3f})")
+        else:
+            interpretations.append(f"Распределение нагрузки сбалансировано ({back_front_thresh - back_front_std:.3f}-{back_front_thresh + back_front_std:.3f})")
+        
+        if is_lame:
+            interpretations.append("\nРекомендуется осмотр ветеринарным врачом")
+        else:
+            interpretations.append("\nБиомеханические показатели в пределах нормы")
+        
+        return '\n'.join(interpretations)
+    
+    def save_gait_analysis_report(self, result_file: Path, result: dict):
+        print("Создание графического отчета анализа походки...")
+        
+        if not hasattr(self, 'last_signals'):
+            print("Нет данных для визуализации")
+            return
+        
+        signals = self.last_signals
+        
+        try:
+            fig = plt.figure(figsize=(20, 16))
+            fig.suptitle(f'Анализ походки лошади\nДиагноз: {result["diagnosis"]}', 
+                        fontsize=14, fontweight='bold', y=0.98)
+            
+            ax1 = plt.subplot2grid((3, 3), (0, 0), colspan=2)
+            colors = {'front_left': 'red', 'front_right': 'blue', 
+                    'back_left': 'green', 'back_right': 'orange'}
+            labels = {'front_left': 'Переднее левое', 'front_right': 'Переднее правое',
+                    'back_left': 'Заднее левое', 'back_right': 'Заднее правое'}
+            
+            for paw, signal in signals.items():
+                frames = np.arange(len(signal))
+                ax1.plot(frames, signal, color=colors[paw], label=labels[paw], linewidth=2)
+            
+            ax1.set_title('Движение копыт в вертикальной плоскости', fontweight='bold')
+            ax1.set_xlabel('Кадры видео')
+            ax1.set_ylabel('Нормализованная амплитуда')
+            ax1.legend()
+            ax1.grid(True, alpha=0.3)
+            
+            ax2 = plt.subplot2grid((3, 3), (0, 2), polar=True)
+            
+            features = result['features']
+            categories = [
+                'Асимметрия\nпередних', 'Асимметрия\nзадних', 'Мин\nамплитуда',
+                'Отношение\nнагрузки', 'Дисперсия\nперед.левого', 'Дисперсия\nперед.правого',
+                'Синхронность\nпередних', 'Синхронность\nзадних', 'Диагональная\nсинхронность',
+                'Скорость\nпередних', 'Рывок\nпередних', 'Общая\nамплитуда'
+            ]
+            
+            values = [
+                min(features['front_asymmetry'] * 10, 1.0),
+                min(features['back_asymmetry'] * 10, 1.0),
+                min(features['min_amplitude'] * 10, 1.0),
+                min(max(features['back_front_ratio'], 0), 2.0) / 2.0,
+                min(features['front_left_var'] * 5, 1.0),
+                min(features['front_right_var'] * 5, 1.0),
+                max(min(features['front_sync'], 1.0), 0),
+                max(min(features['back_sync'], 1.0), 0),
+                max(min(features['diagonal_sync'], 1.0), 0),
+                min(features['front_velocity'] * 5, 1.0),
+                min(features['front_jerk'] * 10, 1.0),
+                min(features['total_rom'] * 2, 1.0)
+            ]
+            
+            angles = np.linspace(0, 2*np.pi, len(categories), endpoint=False).tolist()
+            values += values[:1]
+            angles += angles[:1]
+            
+            ax2.plot(angles, values, 'o-', linewidth=2, color='purple', label='Биомеханика')
+            ax2.fill(angles, values, alpha=0.25, color='purple')
+            ax2.set_xticks(angles[:-1])
+            ax2.set_xticklabels(categories)
+            ax2.set_ylim(0, 1)
+            ax2.set_title('Биомеханический профиль', fontweight='bold', pad=20)
+            ax2.grid(True)
+            
+            ax3 = plt.subplot2grid((3, 3), (1, 0))
+            paws = ['Переднее\nлевое', 'Переднее\nправое', 'Заднее\nлевое', 'Заднее\nправое']
+            amplitudes = [np.ptp(signals['front_left']), np.ptp(signals['front_right']),
+                        np.ptp(signals['back_left']), np.ptp(signals['back_right'])]
+            
+            bars = ax3.bar(paws, amplitudes, color=['red', 'blue', 'green', 'orange'], alpha=0.7)
+            ax3.set_title('Амплитуда движения копыт', fontweight='bold')
+            ax3.set_ylabel('Амплитуда движения')
+            ax3.grid(True, alpha=0.3)
+            
+            for bar, amplitude in zip(bars, amplitudes):
+                ax3.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
+                        f'{amplitude:.3f}', ha='center', va='bottom', fontweight='bold')
+            
+            ax4 = plt.subplot2grid((3, 3), (1, 1), colspan=2)
+            ax4.axis('off')
+            
+            diagnosis_text = (
+                f"Диагностическая информация\n\n"
+                f"Вероятность хромоты: {result['lameness_probability']:.1f}%\n"
+                f"Уверенность анализа: {result['confidence']:.1f}%\n"
+                f"Диагноз: {result['diagnosis']}\n"
+                f"Примечание: {result['diagnosis_note']}\n\n"
+            )
+            
+            features_text = (
+                f"Ключевые показатели:\n\n"
+                f"• Асимметрия передних:     {features['front_asymmetry']:.4f}\n"
+                f"• Асимметрия задних:       {features['back_asymmetry']:.4f}\n"
+                f"• Минимальная амплитуда:   {features['min_amplitude']:.4f}\n"
+                f"• Отношение нагрузки:      {features['back_front_ratio']:.4f}\n"
+                f"• Дисперсия переднего левого:  {features['front_left_var']:.4f}\n"
+                f"• Дисперсия переднего правого: {features['front_right_var']:.4f}\n"
+                f"• Синхронность передних:   {features['front_sync']:.4f}\n"
+                f"• Синхронность задних:     {features['back_sync']:.4f}\n"
+                f"• Диагональная синхронность: {features['diagonal_sync']:.4f}\n"
+                f"• Скорость передних:       {features['front_velocity']:.4f}\n"
+                f"• Рывок передних:          {features['front_jerk']:.4f}\n"
+                f"• Общая амплитуда:         {features['total_rom']:.4f}\n"
+            )
+            
+            ax4.text(0.05, 0.95, diagnosis_text, transform=ax4.transAxes, fontsize=12,
+                    fontweight='bold', verticalalignment='top', linespacing=1.5)
+            ax4.text(0.05, 0.6, features_text, transform=ax4.transAxes, fontsize=11,
+                    verticalalignment='top', linespacing=1.5)
+            
+            confidence_x = 0.7
+            confidence_y = 0.3
+            confidence_width = 0.25
+            confidence_height = 0.4
+            
+            ax4.add_patch(plt.Rectangle((confidence_x, confidence_y), 
+                                    confidence_width, confidence_height,
+                                    fill=True, alpha=0.2, color='gray'))
+            
+            conf_level = result['confidence'] / 100
+            ax4.add_patch(plt.Rectangle((confidence_x, confidence_y), 
+                                    confidence_width, confidence_height * conf_level,
+                                    fill=True, alpha=0.8, 
+                                    color='green' if result['confidence'] >= 70 else 
+                                            'orange' if result['confidence'] >= 50 else 'red'))
+            
+            ax4.text(confidence_x + confidence_width/2, confidence_y + confidence_height + 0.02,
+                    'Уверенность анализа', ha='center', fontweight='bold', fontsize=10)
+            ax4.text(confidence_x + confidence_width/2, confidence_y - 0.02,
+                    f'{result["confidence"]:.1f}%', ha='center', fontweight='bold', fontsize=12)
+            
+            ax5 = plt.subplot2grid((3, 3), (2, 0), colspan=3)
+            ax5.axis('off')
+            ax5.text(0.5, 0.5, 'Анализ завершен\nРезультаты сохранены в текстовом отчете', 
+                    ha='center', va='center', fontsize=14, fontweight='bold',
+                    transform=ax5.transAxes)
+            
+            plt.tight_layout()
+            plt.subplots_adjust(top=0.94, bottom=0.06)
+            
+            plot_path = result_file.with_suffix('.png')
+            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            print(f"Графический отчет сохранен: {plot_path.name}")
+            
+        except Exception as e:
+            print(f"Ошибка при создании графического отчета: {e}")
+
+    def process(self, video_path: Path):
+        print("=" * 70)
+        print(f"Анализ: {video_path.name}")
+        print("=" * 70)
+        
+        try:
+            results_dir = self.output_dir / "results"
+            results_dir.mkdir(exist_ok=True)
+            
+            h5_file, labeled_video = self.analyze_video_superanimal(video_path)
+            
+            print(f"H5 файл: {h5_file.name}")
+            if labeled_video:
+                print(f"Размеченное видео: {labeled_video.name}")
+            
+            features = self.extract_features(h5_file)
+            
+            if features is None:
+                print("Не удалось извлечь признаки")
+                return False
+            
+            result = self.predict_lameness(features)
+            
+            result_file = results_dir / f"{video_path.stem}_result.txt"
+            self._save_result_to_file(result_file, video_path.name, result, h5_file, labeled_video)
+            
+            self.save_gait_analysis_report(result_file, result)
+
+            print(f"Видео {video_path.name} обработано успешно.")
+            return True
+            
+        except Exception as e:
+            print(f"Ошибка при обработке {video_path.name}: {e}")
+            return False
+
+def main():
+    print("Запуск детектора хромоты")
+    print("Режим: Гибридный алгоритм")
+    print()
+
+    # Парсим аргументы командной строки
+    import argparse
+    parser = argparse.ArgumentParser(description='Анализ видео на хромоту')
+    parser.add_argument('--video', required=True, help='Путь к видео файлу')
+    parser.add_argument('--output', help='Директория для результатов')
+    args = parser.parse_args()
+
+    video_path = Path(args.video)
+
+    if not video_path.exists():
+        print(f"❌ Ошибка: видео файл не найден: {video_path}")
+        return
+
+    detector = HorseLamenessDetector()
+
+    # АНАЛИЗИРУЕМ ТОЛЬКО ПЕРЕДАННОЕ ВИДЕО
+    print(f"Начинаем анализ ОДНОГО видео: {video_path.name}")
+    print()
+
+    if detector.process(video_path):
+        print(f"✅ Видео {video_path.name} обработано успешно.")
+        print(f"Использован: Гибридный алгоритм")
+
+        # Выводим результат для парсинга Django
+        print("\n=== RESULTS FOR DJANGO ===")
+        print("RESULT:status=completed")
+        print("RESULT:video_processed=1")
+        print("=== END RESULTS ===")
+    else:
+        print(f"❌ Ошибка при обработке видео {video_path.name}")
+        print("RESULT:status=failed")
+
+if __name__ == "__main__":
+    main()

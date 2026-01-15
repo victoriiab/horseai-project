@@ -1,0 +1,264 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Анализ видео - HorseAI{% endblock %}
+
+{% block extra_css %}
+<style>
+.upload-container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+.page-title { font-size: 28px; color: #333; margin-bottom: 10px; }
+.page-subtitle { color: #666; margin-bottom: 30px; }
+.form-card { background: white; border: 1px solid #ddd; border-radius: 10px; padding: 30px; margin-bottom: 20px; }
+.form-group { margin-bottom: 20px; }
+.form-label { display: block; color: #555; margin-bottom: 8px; font-weight: 500; }
+.form-select, .form-input { 
+    width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; 
+    font-size: 16px; margin-bottom: 10px; 
+}
+.drop-zone { 
+    border: 2px dashed #4CAF50; border-radius: 10px; padding: 40px; 
+    text-align: center; background: #f9f9f9; cursor: pointer; 
+    margin: 20px 0; transition: all 0.3s;
+}
+.drop-zone:hover { background: #f0f9ff; border-color: #45a049; }
+.submit-btn { 
+    width: 100%; padding: 15px; background: linear-gradient(135deg, #4CAF50, #2E7D32); 
+    color: white; border: none; border-radius: 5px; font-size: 18px; 
+    font-weight: bold; cursor: pointer; margin-top: 20px;
+}
+.submit-btn:hover { background: linear-gradient(135deg, #45a049, #1B5E20); }
+.submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+.progress-section { margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 10px; display: none; }
+.progress-bar { height: 10px; background: #ddd; border-radius: 5px; overflow: hidden; margin: 20px 0; }
+.progress-fill { height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s; }
+.info-box { background: #e8f5e9; border-left: 4px solid #4CAF50; padding: 15px; margin: 20px 0; border-radius: 5px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <h1 class="page-title">🐴 Анализ видео лошади</h1>
+    <p class="page-subtitle">Загрузите видео для анализа походки и выявления хромоты</p>
+    
+    <div class="form-card">
+        <h2 style="margin-bottom: 25px; color: #333;">Загрузка видео</h2>
+        
+        <form id="uploadForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Выбор животного -->
+            <div class="form-group">
+                <label class="form-label">Выберите животное:</label>
+                <select name="animal_id" class="form-select" id="animalSelect" required>
+                    <option value="">-- Выберите животное --</option>
+                    {% for animal in animals %}
+                    <option value="{{ animal.animal_id }}">{{ animal.name }} (ID: {{ animal.animal_id }})</option>
+                    {% empty %}
+                    <option value="1">Автоматически созданная лошадь</option>
+                    {% endfor %}
+                </select>
+                <small style="color: #666;">Если животного нет в списке, система создаст его автоматически</small>
+            </div>
+            
+            <!-- Загрузка файла -->
+            <div class="form-group">
+                <label class="form-label">Видеофайл:</label>
+                <div class="drop-zone" id="dropZone">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📁</div>
+                    <p style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">Перетащите файл сюда</p>
+                    <p style="color: #666; margin-bottom: 20px;">или нажмите для выбора файла</p>
+                    <input type="file" name="video_file" id="videoFile" style="display: none;" accept=".mp4,.avi,.mov,.mkv" required>
+                    <button type="button" onclick="document.getElementById('videoFile').click()" 
+                            style="background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                        Выбрать файл
+                    </button>
+                </div>
+                <div id="fileInfo" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 5px; display: none;">
+                    <strong>Выбран файл:</strong> <span id="fileName"></span> (<span id="fileSize"></span>)
+                </div>
+            </div>
+            
+            <!-- Информация -->
+            <div class="info-box">
+                <p><strong>📊 Что анализируется:</strong></p>
+                <ul style="margin: 10px 0 0 20px;">
+                    <li>Симметрия походки</li>
+                    <li>Признаки хромоты</li>
+                    <li>Качество движений</li>
+                    <li>Оценка состояния</li>
+                </ul>
+                <p style="margin-top: 10px;"><strong>⏱️ Время анализа:</strong> 1-2 минуты</p>
+            </div>
+            
+            <!-- Кнопка отправки -->
+            <button type="submit" class="submit-btn" id="submitBtn">
+                🚀 Запустить анализ видео
+            </button>
+        </form>
+        
+        <!-- Прогресс -->
+        <div class="progress-section" id="progressSection">
+            <h3 style="margin-bottom: 15px;">Прогресс анализа:</h3>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div id="progressText" style="text-align: center; color: #666;">
+                Ожидание загрузки...
+            </div>
+        </div>
+    </div>
+    
+    <!-- Результаты -->
+    <div id="resultSection" style="display: none; margin-top: 30px; padding: 20px; background: #e8f5e9; border-radius: 10px;">
+        <h3 style="color: #2E7D32;">✅ Анализ завершен!</h3>
+        <div id="resultContent"></div>
+        <button onclick="window.location.href='/analysis/results/'" 
+                style="background: #2E7D32; color: white; border: none; padding: 10px 20px; border-radius: 5px; margin-top: 15px; cursor: pointer;">
+            📋 Перейти к результатам
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Страница загрузки видео загружена');
+    
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('videoFile');
+    const dropZone = document.getElementById('dropZone');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const submitBtn = document.getElementById('submitBtn');
+    const progressSection = document.getElementById('progressSection');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const resultSection = document.getElementById('resultSection');
+    const resultContent = document.getElementById('resultContent');
+    
+    // Обработка выбора файла
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            const file = this.files[0];
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            
+            fileName.textContent = file.name;
+            fileSize.textContent = sizeMB + ' MB';
+            fileInfo.style.display = 'block';
+            
+            // Проверка размера
+            if (file.size > 500 * 1024 * 1024) {
+                alert('⚠️ Файл слишком большой! Максимум 500MB');
+                this.value = '';
+                fileInfo.style.display = 'none';
+            }
+        }
+    });
+    
+    // Drag & Drop
+    dropZone.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.style.background = '#e8f5e9';
+        this.style.borderColor = '#2E7D32';
+    });
+    
+    dropZone.addEventListener('dragleave', function() {
+        this.style.background = '#f9f9f9';
+        this.style.borderColor = '#4CAF50';
+    });
+    
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.style.background = '#f9f9f9';
+        this.style.borderColor = '#4CAF50';
+        
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
+    });
+    
+    // Обработка формы
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        console.log('Отправка формы...');
+        
+        // Проверка животного
+        const animalSelect = document.getElementById('animalSelect');
+        if (!animalSelect.value) {
+            alert('❌ Пожалуйста, выберите животное');
+            animalSelect.focus();
+            return;
+        }
+        
+        // Проверка файла
+        if (!fileInput.files.length) {
+            alert('❌ Пожалуйста, выберите видеофайл');
+            return;
+        }
+        
+        // Блокируем кнопку и показываем прогресс
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Загрузка...';
+        progressSection.style.display = 'block';
+        progressFill.style.width = '25%';
+        progressText.textContent = 'Загрузка видео на сервер...';
+        
+        try {
+            // Создаем FormData
+            const formData = new FormData(this);
+            
+            // Отправляем запрос
+            const response = await fetch('/api/upload/simple/', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            console.log('Ответ сервера:', data);
+            
+            if (data.success) {
+                // Успех - показываем прогресс
+                progressFill.style.width = '100%';
+                progressText.textContent = '✅ Анализ завершен!';
+                
+                // Показываем результаты
+                resultSection.style.display = 'block';
+                resultContent.innerHTML = `
+                    <p><strong>Видео ID:</strong> ${data.video_id}</p>
+                    <p><strong>Анализ ID:</strong> ${data.analysis_id || 'Н/Д'}</p>
+                    <p><strong>Животное:</strong> ${data.animal_name}</p>
+                    <p><strong>Диагноз:</strong> ${data.diagnosis || 'Норма'}</p>
+                    <p><strong>Вероятность хромоты:</strong> ${data.lameness_probability || 0}%</p>
+                    <p><strong>Хромота:</strong> ${data.is_lame ? 'ДА ⚠️' : 'НЕТ ✅'}</p>
+                `;
+                
+                // Автоматическое перенаправление через 5 секунд
+                setTimeout(() => {
+                    window.location.href = '/analysis/results/';
+                }, 5000);
+                
+            } else {
+                // Ошибка
+                throw new Error(data.error || 'Неизвестная ошибка');
+            }
+            
+        } catch (error) {
+            console.error('Ошибка:', error);
+            alert('❌ Ошибка: ' + error.message);
+            
+            // Восстанавливаем форму
+            submitBtn.disabled = false;
+            submitBtn.textContent = '🚀 Запустить анализ видео';
+            progressSection.style.display = 'none';
+            resultSection.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

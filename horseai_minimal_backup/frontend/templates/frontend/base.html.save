@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HorseAI - Анализ состояния лошадей{% endblock %}</title>
+    
+    <!-- Общие стили для всех страниц -->
+    <style>
+        /* Темная тема с природными цветами */
+        :root {
+            --bg-dark: #1a1f2b;
+            --bg-darker: #151925;
+            --bg-card: #222736;
+            --bg-hover: #2a3042;
+            --border: #2d3448;
+            --border-light: #3a4158;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --accent: #d97706;
+            --accent-hover: #f59e0b;
+            --accent-light: #fbbf24;
+            --earth: #a16207;
+            --wood: #854d0e;
+            --sage: #65a30d;
+            --stone: #57534e;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            --glow: 0 0 20px rgba(217, 119, 6, 0.15);
+            --radius: 8px;
+            --radius-lg: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            min-height: 100vh;
+            font-size: 14px;
+        }
+
+        /* Навигация */
+        .navbar {
+            background: rgba(26, 31, 43, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            height: 70px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-light);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo::before {
+            content: '🐎';
+            font-size: 20px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .nav-link.active {
+            color: var(--accent-light);
+            background: var(--bg-hover);
+            box-shadow: var(--glow);
+        }
+
+        .nav-link-icon {
+            font-size: 16px;
+        }
+
+        .nav-link-text {
+            display: inline;
+        }
+
+        /* Кнопки пользователя в навигации */
+        .user-nav-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: 20px;
+            padding-left: 20px;
+            border-left: 1px solid var(--border);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--earth));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .user-name {
+            font-weight: 500;
+        }
+
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            height: 36px;
+            box-shadow: var(--shadow);
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--earth));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--accent-hover), var(--accent));
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg), var(--glow);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--sage), #4d7c0f);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #84cc16, var(--sage));
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            transform: translateY(-2px);
+        }
+
+        /* Основной контент */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 24px;
+            min-height: calc(100vh - 70px);
+        }
+
+        /* Уведомления */
+        .messages-container {
+            max-width: 1400px;
+            margin: 0 auto 20px;
+            padding: 0 24px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #86efac;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        .alert-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: #fcd34d;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Адаптивность */
+        @media (max-width: 1024px) {
+            .nav-link-text {
+                display: none;
+            }
+            
+            .nav-link {
+                padding: 12px;
+            }
+            
+            .user-name {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-container {
+                padding: 0 16px;
+            }
+            
+            .main-container {
+                padding: 20px 16px;
+            }
+            
+            .messages-container {
+                padding: 0 16px;
+            }
+            
+            .user-nav-section {
+                margin-left: 10px;
+                padding-left: 10px;
+                gap: 8px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .nav-links {
+                gap: 4px;
+            }
+            
+            .nav-link {
+                padding: 10px 12px;
+            }
+            
+            .user-avatar {
+                width: 28px;
+                height: 28px;
+                font-size: 12px;
+            }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">HorseAI</a>
+            <div class="nav-links">
+                {% for item in menu_items %}
+                    {% if item.name != 'Войти' or not user.is_authenticated %}
+                        <a href="{{ item.url }}" class="nav-link {% if request.path == item.url %}active{% endif %}">
+                            <span class="nav-link-icon">{{ item.icon }}</span>
+                            <span class="nav-link-text">{{ item.name }}</span>
+                        </a>
+                    {% endif %}
+                {% endfor %}
+                
+                <div class="user-nav-section">
+                    {% if user.is_authenticated %}
+                        <div class="user-info">
+                            <div class="user-avatar">
+                                {{ user.username|first|upper }}
+                            </div>
+                            <span class="user-name">{{ user.username }}</span>
+                        </div>
+                        <a href="/logout/" class="nav-btn btn-danger">
+                            <span>🚪</span>
+                            <span class="nav-link-text">Выйти</span>
+                        </a>
+                    {% else %}
+                        
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Уведомления -->
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            <span>
+                {% if message.tags == 'success' %} ✅
+                {% elif message.tags == 'error' %} ❌
+                {% elif message.tags == 'warning' %} ⚠️
+                {% else %} ℹ️
+                {% endif %}
+            </span>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Основной контент -->
+    <main class="main-container">
+        {% block content %}
+        <!-- Содержимое страницы -->
+        {% endblock %}
+    </main>
+
+    {% block extra_js %}{% endblock %}
+    
+    <script>
+        // Подсветка активной ссылки в навигации
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+            
+            // Плавное появление страницы
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => {
+                document.body.style.opacity = '1';
+            }, 100);
+        });
+    </script>
+</body>
+</html>

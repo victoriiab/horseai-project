@@ -1,0 +1,63 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Загрузка видео - HorseAI{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto; padding: 30px;">
+    <h1 style="color: #2c3e50;">🎬 Загрузка видео (прямая версия)</h1>
+    <p style="color: #7f8c8d;">Эта форма работает БЕЗ JavaScript</p>
+    
+    {% if messages %}
+    <div style="margin-bottom: 20px;">
+        {% for message in messages %}
+        <div style="padding: 15px; background: {% if message.tags == 'success' %}#d4edda{% else %}#f8d7da{% endif %}; 
+                    border-radius: 8px; color: {% if message.tags == 'success' %}#155724{% else %}#721c24{% endif %};">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div style="background: #f8f9fa; padding: 30px; border-radius: 10px;">
+        <form method="POST" action="{% url 'video_upload_direct' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 10px;">Выберите животное:</label>
+                <select name="animal_id" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px;" required>
+                    <option value="">-- Выберите животное --</option>
+                    {% for animal in animals %}
+                    <option value="{{ animal.animal_id }}">{{ animal.name }} (ID: {{ animal.animal_id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-weight: bold; margin-bottom: 10px;">Видеофайл:</label>
+                <input type="file" name="video_file" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px;" required>
+                <small style="color: #7f8c8d;">Поддерживаемые форматы: MP4, AVI, MOV, MKV (до 500MB)</small>
+            </div>
+            
+            <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                <p style="margin: 0; color: #2c3e50;"><strong>📊 Что анализируется:</strong></p>
+                <ul style="margin: 10px 0 0 20px; color: #2c3e50;">
+                    <li>Симметрия походки и движений</li>
+                    <li>Признаки хромоты</li>
+                    <li>Оценка качества движений</li>
+                </ul>
+            </div>
+            
+            <button type="submit" style="width: 100%; background: #4CAF50; color: white; border: none; padding: 16px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;">
+                🚀 Запустить анализ видео
+            </button>
+        </form>
+    </div>
+    
+    <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-radius: 8px;">
+        <p style="color: #856404; margin: 0;">
+            <strong>ℹ️ Примечание:</strong> Эта версия работает без JavaScript. 
+            После загрузки вы будете перенаправлены на страницу результатов.
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+--- base.html
++++ base.html
+@@ -94,6 +94,10 @@
+                         <a href="/analysis/results/" class="nav-link {% if '/analysis/' in request.path %}active{% endif %}">
+                             <span class="nav-link-icon">📊</span>
+                             <span class="nav-link-text">Результаты</span>
++                        </a>
++                        <a href="/ration/history/" class="nav-link {% if '/ration/history/' in request.path %}active{% endif %}">
++                            <span class="nav-link-icon">📋</span>
++                            <span class="nav-link-text">Мои рационы</span>
+                         </a>
+                         <a href="/ration/" class="nav-link {% if '/ration/' in request.path %}active{% endif %}">
+                             <span class="nav-link-icon">🥕</span>
